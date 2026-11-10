@@ -84,6 +84,12 @@ function openApi() {
     },
   });
   const paths: Record<string, unknown> = {
+    '/health': {
+      get: { summary: 'Application and PostgreSQL health', description: 'Checks database connectivity; this is not process-only liveness.', security: [], responses: { '200': { description: 'Healthy' }, '503': { description: 'Database unavailable' } } },
+    },
+    '/ready': {
+      get: { summary: 'Application readiness', description: 'Checks database readiness and may initialize the explicitly enabled development seed.', security: [], responses: { '200': { description: 'Ready' }, '503': { description: 'Not ready' } } },
+    },
     '/api/health': {
       get: { summary: 'Application and PostgreSQL health', description: 'Checks database connectivity.', security: [], responses: { '200': { description: 'Healthy' }, '500': { description: 'Database unavailable' } } },
     },
@@ -170,7 +176,19 @@ function openApi() {
     users: 'user.manage',
     agents: 'invoice.read',
   };
-  for (const [name, permission] of Object.entries(collections)) paths['/api/' + name] = list(name, permission);
+  for (const [name, permission] of Object.entries(collections)) {
+    paths['/api/' + name] = list(name, permission);
+    if (name !== 'analytics') {
+      paths['/api/' + name + '/{id}'] = {
+        get: {
+          summary: 'Read one recent ' + name + ' record',
+          description: 'Requires an authenticated session and ' + permission + '. The record is selected from the bounded workspace snapshot.',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { '200': { description: 'Record' }, '401': { description: 'Authentication required' }, '403': { description: 'Permission denied' }, '404': { description: 'Record not found in the current snapshot' } },
+        },
+      };
+    }
+  }
   const tasksPath = list('tasks', 'task.manage');
   tasksPath.post = { summary: 'Create an internal task', description: 'Requires task.manage.', responses: { '200': { description: 'Task created' }, '403': { description: 'Permission denied' } } };
   paths['/api/tasks'] = tasksPath;
