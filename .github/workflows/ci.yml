@@ -8,6 +8,12 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      APP_ENV: development
+      DEMO_MODE: 'false'
+      SEED_ON_START: 'false'
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/app_db
+      APP_ORIGIN: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,6 +23,7 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npm audit --audit-level=high
+      - run: npm test
       - run: npx next typegen
       - run: npm run lint
       - run: npm run typecheck
