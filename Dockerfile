@@ -6,6 +6,10 @@ COPY . .
 
 FROM deps AS build
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV APP_ENV=production
+ENV DEMO_MODE=false
+ENV SEED_ON_START=false
+ENV APP_ORIGIN=https://build.invalid
 ENV DATABASE_URL=postgresql://build-only:build-only@127.0.0.1:5432/build-only
 RUN npm run build
 
