@@ -1,3 +1,72 @@
 # Workflows
 
-The state transition map is in domain.ts and enforced in backend services. Investigation may be repeated without regressing pending approval/escalation states. Approval requests are unique while pending. A decision locks the approval, exception, and invoice; checks authority and requester separation; rejects replays; and records before/after states. Approval authorizes a hold, not payment. The approved path creates a procurement task and an unsent vendor draft. Rejection requires a rationale. Simulations perform no workflow mutation. Tasks have validated transitions. Monitoring uses unique audit idempotency keys for SLA events and unique exception keys for detections. It is on-demand or scheduler-triggered, not a durable always-on queue. Feedback is stored after resolution and never changes production rules automatically.
+ExceptionPilot treats investigation, approval, execution, and audit as separate stages.
+
+## Investigation
+
+1. Load the exception and related PO, invoice, GRN, and vendor records.
+2. Run deterministic matching and variance checks.
+3. Calculate explainable risk factors.
+4. Retrieve applicable policy evidence.
+5. Produce a structured investigation report.
+
+Investigation is read-only. Re-running it does not regress approval or escalation state.
+
+## Approval
+
+Approval requests are unique while pending.
+
+Before execution, the backend checks:
+
+- current session
+- role authority
+- approval threshold
+- separation of duties
+- compliance requirements
+- current exception/approval state
+
+The decision is then executed transactionally.
+
+## Approval outcomes
+
+### Approve hold
+
+The approved path can:
+
+- place the invoice on hold;
+- resolve the relevant exception;
+- create a procurement task;
+- create an unsent vendor communication draft;
+- append an audit event.
+
+Approval authorizes a **hold workflow**, not payment.
+
+### Reject
+
+A rejection requires a rationale and leaves a traceable decision record.
+
+## Simulation
+
+Simulation previews a sensitive workflow without mutating financial state.
+
+## Tasks
+
+Tasks use validated state transitions and are linked to the originating workflow where applicable.
+
+## Monitoring
+
+Monitoring can be triggered manually or by an authenticated scheduler.
+
+Idempotency keys prevent duplicate SLA events and duplicate exception detections.
+
+It is not a durable always-on background queue.
+
+## Feedback
+
+Resolution feedback is stored after the exception is resolved.
+
+Feedback does not silently modify production rules or train an AI model.
+
+## Safety boundary
+
+The system deliberately avoids autonomous payment release, external email sending, and model-controlled financial mutations.
