@@ -7,6 +7,7 @@ import { calculateVariance, duplicateReasons, matchRecords, money, riskAssessmen
 import { ApiError } from './auth';
 import { audit } from './audit';
 import { applicablePolicy, searchEvidence } from './retrieval';
+import { calibratedConfidence, confidenceLabel } from './confidence';
 export type LLMProvider = { name: string; model: string; available: boolean };
 export const mockProvider: LLMProvider = { name: 'mock', model: 'deterministic-rules-v1', available: true };
 function transitionCheck(from: string, to: string) { if (!TRANSITIONS[from]?.includes(to)) throw new ApiError(409, `Invalid transition ${from} → ${to}.`); }
@@ -86,8 +87,9 @@ export async function investigate(exceptionId: string, actor: Actor, requestId: 
       recommendation,
       approvalRequired: true,
       actionsTaken: [],
-      confidence: null,
-      confidenceNote: 'No calibrated LLM confidence is available. Rule outcomes are deterministic; evidence match strength is lexical, not a probability of correctness.',
+      confidence: evidence.length ? calibratedConfidence({ topSimilarity: evidence[0].semanticScore ?? evidence[0].matchStrength, secondSimilarity: evidence[1]?.semanticScore ?? evidence[1]?.matchStrength ?? 0, evidenceCount: evidence.length, lexicalAgreement: evidence[0].matchStrength, citationCoverage: evidence.length ? 1 : 0 }) : 0,
+      confidenceLabel: evidence.length ? confidenceLabel(calibratedConfidence({ topSimilarity: evidence[0].semanticScore ?? evidence[0].matchStrength, secondSimilarity: evidence[1]?.semanticScore ?? evidence[1]?.matchStrength ?? 0, evidenceCount: evidence.length, lexicalAgreement: evidence[0].matchStrength, citationCoverage: 1 })) : 'low',
+      confidenceNote: 'Calibrated retrieval-grounding confidence from the versioned calibration profile; it is not a guarantee of correctness.',
       similarCases: similar.map(item => ({
         id: item.id,
         resolvedAt: item.resolvedAt,
