@@ -6,9 +6,8 @@ import { Actor, OPEN_STATES, ROLE_NAMES, TRANSITIONS, money, requiredApprovalRol
 import { ApiError } from './auth';
 import { audit } from './audit';
 import { applicablePolicy, searchEvidence } from './retrieval';
+import { canApproveRole } from './security-policy';
 type ApprovalRule = { max: number | null; role: string };
-const APPROVAL_AUTHORITIES: Record<string, string[]> = { AP_CLERK:['AP_CLERK','AP_MANAGER','FINANCE_MANAGER','FINANCE_DIRECTOR'], AP_MANAGER:['AP_MANAGER','FINANCE_MANAGER','FINANCE_DIRECTOR'], FINANCE_MANAGER:['FINANCE_MANAGER','FINANCE_DIRECTOR'], FINANCE_DIRECTOR:['FINANCE_DIRECTOR'], COMPLIANCE:['COMPLIANCE'] };
-function canApproveRole(actorRole: string, requiredRole: string) { return APPROVAL_AUTHORITIES[requiredRole]?.includes(actorRole) === true; }
 const uuid = (prefix: string) => `${prefix}-${randomUUID()}`;
 async function getException(id: string, tx: Pick<typeof db,'select'> = db, lock = false) { const query = tx.select().from(s.exceptions).where(eq(s.exceptions.id,id)).limit(1); const [row] = lock ? await query.for('update') : await query; if(!row) throw new ApiError(404,'Exception not found.'); return row; }
 function transition(from: string, to: string) { if(!TRANSITIONS[from]?.includes(to)) throw new ApiError(409, `Transition ${from} → ${to} is not permitted.`); }
