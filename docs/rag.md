@@ -19,7 +19,7 @@ flowchart LR
     E --> S[Top source excerpts]
 ```
 
-The current implementation retrieves at most 100 database candidates, combines PostgreSQL full-text rank with lexical overlap in JavaScript, and returns up to five excerpts. Ranking is bounded by that candidate set; relevant documents outside the candidate set can be missed.
+The current implementation retrieves at most 100 database candidates ordered by PostgreSQL full-text rank, combines that rank with lexical overlap in JavaScript, and returns up to five excerpts. Ranking is bounded by that candidate set; relevant documents outside the candidate set can be missed.
 
 Draft, archived, inactive, and expired sources are excluded from normal evidence retrieval.
 
