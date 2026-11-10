@@ -108,14 +108,17 @@ Every sensitive mutation is authorized on the backend. Investigation and simulat
 - HTTP-only SameSite cookies
 - Production HTTPS cookie enforcement
 - Backend RBAC and permission checks
-- Origin validation
+- Canonical-origin validation using `APP_ORIGIN`
+- No anonymous fallback for protected routes
+- Explicit development-only demo role selection
+- Role-based workspace data projections
 - Security headers/CSP
 - Upload validation
 - Masked sensitive identifiers
 - Append-only audit trigger
 
 ### UI
-- Responsive workspace
+- Responsive workspace layout (independent mobile-browser verification remains outstanding)
 - Light/dark themes
 - Command search (`Ctrl/Cmd + K`)
 - Notifications
@@ -266,7 +269,7 @@ npm ci
 cp .env.example .env
 ```
 
-Set `DATABASE_URL` for your PostgreSQL instance.
+Set `DATABASE_URL` for your PostgreSQL instance. The example keeps `DEMO_MODE=false` and `SEED_ON_START=false`. To intentionally run the seeded demo locally, set `APP_ENV=development`, `DEMO_MODE=true`, and `SEED_ON_START=true`. Demo mode is not for internet-facing deployments.
 
 ### 4. Prepare the database
 
@@ -274,8 +277,9 @@ For a fresh database:
 
 ```bash
 npx tsx scripts/migrate.ts
-npx tsx scripts/seed.ts
 ```
+
+When demo mode is explicitly enabled, the development seed is initialized automatically. Do not manually seed demo users into a production database.
 
 ### 5. Start the app
 
@@ -316,8 +320,8 @@ Open:
 
 - `/workspace/api-docs` — interactive endpoint browser
 - `/api/openapi` — OpenAPI 3.0 JSON
-- `/health` — lightweight liveness
-- `/ready` — database/readiness check
+- `/health` — PostgreSQL connectivity check
+- `/ready` — database/readiness check (may initialize the explicitly enabled demo seed)
 - `/api/health` — application health
 
 See [API reference](docs/api.md).
@@ -326,18 +330,7 @@ See [API reference](docs/api.md).
 
 ## Validation
 
-The latest documented checks include:
-
-- Next.js route type generation
-- TypeScript compilation
-- Production build
-- Managed startup
-- Health/readiness endpoints
-- Core workspace routes
-- OpenAPI endpoint
-- Runtime dependency audit
-
-The repository explicitly does **not** claim a full automated test suite, formal RAG benchmark, Docker execution, or cloud deployment unless those checks are recorded in [VALIDATION.md](VALIDATION.md).
+CI now includes dependency installation from the lockfile, a separate dependency audit, security-policy regression tests, Next.js route type generation, linting, TypeScript checks, and a production build. Results must be tied to the exact commit in [VALIDATION.md](VALIDATION.md). This suite is not a substitute for PostgreSQL integration, browser accessibility, formal retrieval evaluation, Docker runtime, or cloud deployment tests.
 
 ---
 
@@ -354,6 +347,7 @@ For non-demo deployment:
 - `APP_ENV=production`
 - `DEMO_MODE=false`
 - `SEED_ON_START=false`
+- `APP_ORIGIN=https://your-canonical-host.example`
 - strong database credentials
 - HTTPS/TLS
 - controlled administrator provisioning
