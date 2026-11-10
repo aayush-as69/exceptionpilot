@@ -151,7 +151,27 @@ function openApi() {
       patch: { summary: 'Update validated application settings', description: 'Requires system.configure. Before/after state and the change are recorded transactionally.', responses: { '200': { description: 'Setting updated' }, '400': { description: 'Invalid setting payload' }, '403': { description: 'Permission denied' } } },
     },
     '/api/users/{id}': {
-      patch: { summary: 'Activate or deactivate a user', description: 'Requires user.manage. Deactivation revokes active sessions.', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['active'], properties: { active: { type: 'boolean' } }, additionalProperties: false } } } }, responses: { '200': { description: 'User status updated' }, '403': { description: 'Permission denied' } } },
+      patch: {
+        summary: 'Activate or deactivate a user',
+        description: 'Requires user.manage. Deactivation revokes active sessions.',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['active'],
+                properties: { active: { type: 'boolean' } },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'User status updated' },
+          '403': { description: 'Permission denied' },
+        },
+      },
     },
     '/api/playbooks': {
       post: { summary: 'Create workflow guidance', description: 'Requires system.configure.', responses: { '200': { description: 'Playbook created' }, '403': { description: 'Permission denied' } } },
