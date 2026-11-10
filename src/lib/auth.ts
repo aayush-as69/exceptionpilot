@@ -7,38 +7,11 @@ import { roles, sessions, users } from '@/db/schema';
 import type { Actor } from './domain';
 const scrypt = promisify(scryptCallback);
 
-// Demo access is opt-in and available only in an explicitly configured development environment.
-export const demoEnabled = () => process.env.APP_ENV === 'development' && process.env.DEMO_MODE === 'true';
+import { demoModeEnabled, validateRuntimeConfiguration } from './security-policy';
 
-export function assertRuntimeConfiguration() {
-  const appEnv = process.env.APP_ENV;
-  const demo = process.env.DEMO_MODE;
-  if (appEnv !== 'development' && appEnv !== 'production') {
-    throw new Error('APP_ENV must be explicitly set to development or production.');
-  }
-  if (demo !== 'true' && demo !== 'false') {
-    throw new Error('DEMO_MODE must be explicitly set to true or false.');
-  }
-  if (appEnv === 'production' && demo !== 'false') {
-    throw new Error('DEMO_MODE must be false in production.');
-  }
-  if (appEnv === 'production' && process.env.SEED_ON_START !== 'false') {
-    throw new Error('SEED_ON_START must be explicitly false in production.');
-  }
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL must be configured.');
-  }
-  if (appEnv === 'production') {
-    const configuredOrigin = process.env.APP_ORIGIN;
-    if (!configuredOrigin) throw new Error('APP_ORIGIN must be configured in production.');
-    try {
-      const parsed = new URL(configuredOrigin);
-      if (parsed.protocol !== 'https:' || parsed.origin !== configuredOrigin) throw new Error();
-    } catch {
-      throw new Error('APP_ORIGIN must be a canonical HTTPS origin without a path or trailing slash.');
-    }
-  }
-}
+// Demo access is opt-in and available only in an explicitly configured development environment.
+export const demoEnabled = () => demoModeEnabled(process.env.APP_ENV, process.env.DEMO_MODE);
+export function assertRuntimeConfiguration() { validateRuntimeConfiguration(process.env); }
 
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
 export async function hashPassword(password: string) { const salt = randomBytes(16).toString('hex'); const key = await scrypt(password, salt, 64) as Buffer; return `${salt}:${key.toString('hex')}`; }
