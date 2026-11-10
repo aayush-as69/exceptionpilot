@@ -1,7 +1,58 @@
 # Deployment
 
-Local demo: npm ci; configure .env; migrate a fresh database; seed; npm run dev. Docker demo: docker compose up --build. Compose starts PostgreSQL, runs the migration service to completion, then starts the standalone Next.js server. The web port binds to localhost. Demo defaults are explicit and development-only.
+## Local development
 
-Non-demo: set APP_ENV=production, DEMO_MODE=false, SEED_ON_START=false, a strong POSTGRES_PASSWORD and corresponding DATABASE_URL, and terminate TLS. Provision an administrator using ADMIN_EMAIL/ADMIN_PASSWORD with npx tsx scripts/provision-admin.ts. Use HTTPS so production session cookies are accepted. Add a trusted reverse proxy that overwrites forwarded headers and limits request bodies. Schedule POST /api/cron with a strong CRON_SECRET if continuous monitoring is needed. Configure backups and test restore before real use.
+```bash
+npm ci
+npx tsx scripts/migrate.ts
+npx tsx scripts/seed.ts
+npm run dev
+```
 
-Standalone output requires copying .next/static and public, as the Dockerfile does. /ready verifies schema seed readiness and database connectivity; /health is lightweight liveness. Docker build/runtime execution is not assumed; see VALIDATION.md for checks actually performed. This archive does not include cloud credentials or claim a cloud deployment.
+## Docker
+
+The repository includes a multi-stage Dockerfile and a development-oriented Compose setup.
+
+```bash
+docker compose up --build
+```
+
+Compose starts PostgreSQL, runs the migration service, then starts the standalone Next.js server.
+
+Docker execution is only claimed when recorded in [VALIDATION.md](../VALIDATION.md).
+
+## Production baseline
+
+Use:
+
+```text
+APP_ENV=production
+DEMO_MODE=false
+SEED_ON_START=false
+```
+
+Also configure strong database credentials, HTTPS/TLS, a trusted reverse proxy, controlled administrator provisioning, backups, restore testing, dependency monitoring, and application monitoring.
+
+Provision an administrator with:
+
+```bash
+npx tsx scripts/provision-admin.ts
+```
+
+## Scheduled monitoring
+
+If continuous monitoring is required:
+
+`POST /api/cron`
+
+Use a strong `CRON_SECRET` and send it as a bearer token.
+
+## Reverse proxy
+
+The production proxy should terminate TLS, overwrite forwarded headers, enforce request-body limits, apply rate limiting, provide access logging, and avoid exposing internal services directly.
+
+## Database operations
+
+Run backups and rehearse restoration before real financial data is introduced.
+
+The application does not ship cloud credentials and does not claim a cloud deployment.
