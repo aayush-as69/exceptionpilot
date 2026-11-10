@@ -22,9 +22,11 @@ DEMO_MODE=false
 SEED_ON_START=false
 DATABASE_URL=<production database URL>
 APP_ORIGIN=https://your-canonical-host.example
+CRON_SECRET=<at least 24 random characters>
+RATE_LIMITING_MODE=gateway
 ```
 
-Production startup rejects demo mode, automatic demo seeding, missing database configuration, and a missing or non-canonical HTTPS application origin. Never expose seeded demo credentials or role switching on an internet-facing deployment.
+Production startup rejects demo mode, automatic demo seeding, missing database configuration, a missing or non-canonical HTTPS application origin, a missing/short cron secret, and a missing gateway rate-limit declaration. `RATE_LIMITING_MODE=gateway` is a required deployment contract, not proof that an edge gateway is actually configured. Never expose seeded demo credentials or role switching on an internet-facing deployment.
 
 ## Authorization and data projection
 
@@ -42,7 +44,7 @@ Production startup rejects demo mode, automatic demo seeding, missing database c
 - Upload extension, MIME, UTF-8, and size validation.
 - Mutating browser requests are checked against the canonical `APP_ORIGIN` in production. Client-supplied forwarded-host values are not used for origin decisions.
 - A production reverse proxy must overwrite forwarded headers and keep internal services private.
-- The process-local rate limiter is best-effort only. It is not shared across instances and can reset on process restart. Enforce distributed rate limits at a trusted gateway or shared store before production use.
+- The process-local rate limiter is best-effort only. It is not shared across instances and can reset on process restart. Production startup requires `RATE_LIMITING_MODE=gateway`, but the platform operator must configure and verify the actual distributed limits at a trusted edge gateway before routing public traffic.
 - Security headers and CSP are present, but the current policy still permits inline scripts and styles.
 
 ## Audit and workflow state
