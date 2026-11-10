@@ -32,19 +32,61 @@ export async function executeApproval(approvalId: string, decision: 'APPROVED'|'
 export async function draftCommunication(exceptionId:string,actor:Actor,requestId:string) { const e=await getException(exceptionId); const [vendor]=await db.select().from(s.vendors).where(eq(s.vendors.id,e.vendorId)); const [invoice]=await db.select().from(s.invoices).where(eq(s.invoices.id,e.invoiceId)); const evidence=await searchEvidence(e.title,undefined,applicablePolicy(e.type)); const id=uuid('draft'); await db.insert(s.communications).values({id,exceptionId,recipient:vendor.email,subject:`Action required: clarification for ${invoice.number}`,body:`Hello ${vendor.name} team,\n\nWe are reviewing invoice ${invoice.number} for ${money(invoice.total)}. Our records identified: ${e.title.toLowerCase()}.\n\nPlease send the supporting purchase agreement, itemized pricing, and receiving documentation so we can complete the review.\n\nRegards,\nFinance Operations\n\nDEMO DRAFT — recipient uses a reserved .example address.`,evidence:evidence.map(x=>`${x.document} v${x.version}, ${x.section}, page ${x.page}: ${x.content}`).join('\n\n')||'Structured invoice and exception records; no applicable document evidence found.',reason:e.title,status:'DRAFT',createdBy:actor.id}); await audit({actor:actor.name,actorType:'HUMAN',action:'COMMUNICATION_DRAFTED',target:exceptionId,tool:'draft_email',inputSummary:`Draft to ${vendor.email}`,result:`Draft ${id} created. External sending is not connected.`,requestId}); return {id}; }
 export async function escalate(exceptionId:string,actor:Actor,requestId:string,reason:string) { return db.transaction(async tx=>{const e=await getException(exceptionId,tx,true);transition(e.status,'ESCALATED');const assignee=e.riskScore>=76?'usr-compliance':'usr-finance';await tx.update(s.exceptions).set({status:'ESCALATED',ownerId:assignee}).where(eq(s.exceptions.id,exceptionId));const taskId=uuid('task');await tx.insert(s.tasks).values({id:taskId,title:`Escalated review: ${exceptionId}`,description:reason,assignee,priority:'HIGH',dueAt:new Date(Date.now()+7200000),exceptionId,createdBy:actor.id});await tx.insert(s.notifications).values({userId:assignee,type:'ESCALATION',title:'An exception needs your review',body:reason,exceptionId});await audit({actor:actor.name,actorType:'HUMAN',action:'EXCEPTION_ESCALATED',target:exceptionId,tool:'create_task',inputSummary:reason,result:`Assigned to ${assignee}; task ${taskId} created.`,beforeState:{status:e.status,owner:e.ownerId},afterState:{status:'ESCALATED',owner:assignee},requestId},tx);return {taskId};}); }
 export async function simulate(exceptionId:string,decision:string) { const e=await getException(exceptionId);const [invoice]=await db.select().from(s.invoices).where(eq(s.invoices.id,e.invoiceId));const role=await approvalRequirement(e);const effects:Record<string,string[]>={APPROVE:['Authorize the proposed hold, not a payment release.','Invoice changes to ON_HOLD after an authorized human decision.','A procurement follow-up task and vendor email draft are created.','Approval and action are recorded in the append-only audit trail.'],HOLD:['The proposed hold blocks payment readiness.','A human approval is still required before execution.','Vendor clarification remains necessary.'],REJECT:['An authorized reviewer must provide a reason.','Invoice becomes REJECTED; no payment is released.','The decision can be reviewed in the audit trail.'],REQUEST_CLARIFICATION:['A draft request is prepared for the vendor.','No external message is sent by this demo.','The exception remains open while evidence is collected.'],ESCALATE:['The case is assigned to finance or compliance.','A priority review task and notification are created.','The original SLA deadline is preserved.']};return {simulated:true,executed:false,decision,financialImpact:money(e.amount),invoiceStatus:invoice.status,risk:riskBand(e.riskScore),approvalRequired:decision==='APPROVE'||decision==='HOLD'||decision==='REJECT',requiredRole:ROLE_NAMES[role],downstreamEffects:effects[decision]??[],recommendedAction:'Review the evidence, then request explicit human authorization.'}; }
-export async function createTask(input:{title:string;description:string;assignee:string;priority:string;dueAt:string;exceptionId?:string},actor:Actor,requestId:string) {const [assignee]=await db.select().from(s.users).where(and(eq(s.users.id,input.assignee),eq(s.users.active,true)));if(!assignee)throw new ApiError(400,'Choose an active assignee.');if(input.exceptionId)await getException(input.exceptionId);const id=uuid('task');await db.insert(s.tasks).values({...input,id,dueAt:new Date(input.dueAt),creexport async function updateTask(id:string,status:string,actor:Actor,requestId:string){
-  const allowed:Record<string,string[]>={TODO:['IN_PROGRESS','BLOCKED','CANCELLED'],IN_PROGRESS:['DONE','BLOCKED','CANCELLED'],BLOCKED:['IN_PROGRESS','CANCELLED'],DONE:[],CANCELLED:[]};
-  return db.transaction(async tx=>{
-    const [task]=await tx.select().from(s.tasks).where(eq(s.tasks.id,id)).for('update');
-    if(!task)throw new ApiError(404,'Task not found.');
-    if(!allowed[task.status]?.includes(status))throw new ApiError(409,'Invalid task transition.');
-    const [updated]=await tx.update(s.tasks).set({status,completedAt:status==='DONE'?new Date():null}).where(and(eq(s.tasks.id,id),eq(s.tasks.status,task.status))).returning({id:s.tasks.id});
-    if(!updated)throw new ApiError(409,'Task changed while you were updating it. Refresh and try again.');
-    await audit({actor:actor.name,actorType:'HUMAN',action:'TASK_UPDATED',target:id,inputSummary:`Task status: ${task.status} → ${status}`,result:'Task updated.',beforeState:{status:task.status},afterState:{status},requestId},tx);
-    return {id,status};
+export async function createTask(
+  input: { title: string; description: string; assignee: string; priority: string; dueAt: string; exceptionId?: string },
+  actor: Actor,
+  requestId: string,
+) {
+  const [assignee] = await db.select().from(s.users)
+    .where(and(eq(s.users.id, input.assignee), eq(s.users.active, true)));
+  if (!assignee) throw new ApiError(400, 'Choose an active assignee.');
+  if (input.exceptionId) await getException(input.exceptionId);
+  const id = uuid('task');
+  await db.insert(s.tasks).values({ ...input, id, dueAt: new Date(input.dueAt), createdBy: actor.id });
+  await audit({
+    actor: actor.name,
+    actorType: 'HUMAN',
+    action: 'TASK_CREATED',
+    target: input.exceptionId ?? id,
+    tool: 'create_task',
+    inputSummary: input.title,
+    result: `Task assigned to ${assignee.name}.`,
+    requestId,
+  });
+  return { id };
+}
+
+export async function updateTask(id: string, status: string, actor: Actor, requestId: string) {
+  const allowed: Record<string, string[]> = {
+    TODO: ['IN_PROGRESS', 'BLOCKED', 'CANCELLED'],
+    IN_PROGRESS: ['DONE', 'BLOCKED', 'CANCELLED'],
+    BLOCKED: ['IN_PROGRESS', 'CANCELLED'],
+    DONE: [],
+    CANCELLED: [],
+  };
+  return db.transaction(async tx => {
+    const [task] = await tx.select().from(s.tasks).where(eq(s.tasks.id, id)).for('update');
+    if (!task) throw new ApiError(404, 'Task not found.');
+    if (!allowed[task.status]?.includes(status)) throw new ApiError(409, 'Invalid task transition.');
+    const [updated] = await tx.update(s.tasks)
+      .set({ status, completedAt: status === 'DONE' ? new Date() : null })
+      .where(and(eq(s.tasks.id, id), eq(s.tasks.status, task.status)))
+      .returning({ id: s.tasks.id });
+    if (!updated) throw new ApiError(409, 'Task changed while you were updating it. Refresh and try again.');
+    await audit({
+      actor: actor.name,
+      actorType: 'HUMAN',
+      action: 'TASK_UPDATED',
+      target: id,
+      inputSummary: `Task status: ${task.status} → ${status}`,
+      result: 'Task updated.',
+      beforeState: { status: task.status },
+      afterState: { status },
+      requestId,
+    }, tx);
+    return { id, status };
   });
 }
-actor.name,actorType:'HUMAN',action:'TASK_UPDATED',target:id,inputSummary:`Task status: ${task.status} → ${status}`,result:'Task updated.',beforeState:{status:task.status},afterState:{status},requestId},tx);});return {id,status};}
 export async function policyChange(policyId:string,input:{tolerancePercent:number;version:string;activate:boolean;confirmed:boolean},actor:Actor,requestId:string){const [policy]=await db.select().from(s.policies).where(eq(s.policies.id,policyId));if(!policy)throw new ApiError(404,'Policy not found.');const affected=await db.select({vendorId:s.exceptions.vendorId}).from(s.exceptions).innerJoin(s.invoices,eq(s.invoices.id,s.exceptions.invoiceId)).innerJoin(s.purchaseOrders,eq(s.purchaseOrders.id,s.invoices.poId)).where(and(inArray(s.exceptions.status,OPEN_STATES),sql`abs(${s.invoices.total}-${s.purchaseOrders.total})*100 > ${s.purchaseOrders.total}*${Math.min(policy.tolerancePercent,input.tolerancePercent)}`));const preview={oldTolerance:policy.tolerancePercent,newTolerance:input.tolerancePercent,affectedExceptions:affected.length,affectedVendors:new Set(affected.map(e=>e.vendorId)).size,requiresConfirmation:true};if(!input.activate||!input.confirmed)return {preview,updated:false};if(input.version===policy.version)throw new ApiError(400,'Activation requires a new document version.');await db.transaction(async tx=>{const [chunk]=await tx.select().from(s.policyChunks).where(eq(s.policyChunks.policyId,policyId)).limit(1);const documentId=uuid('doc');await tx.insert(s.documents).values({id:documentId,title:policy.name,category:policy.category,owner:actor.name,status:'ACTIVE',version:input.version,effectiveDate:new Date(),uploadedBy:actor.id,mime:'text/plain',filename:`${policy.name}-v${input.version}.txt`});if(chunk)await tx.insert(s.policyChunks).values({...chunk,id:uuid('chunk'),documentId,content:chunk.content.replaceAll(`${policy.tolerancePercent}%`,`${input.tolerancePercent}%`)});if(policy.documentId)await tx.update(s.documents).set({status:'ARCHIVED'}).where(eq(s.documents.id,policy.documentId));await tx.update(s.policies).set({tolerancePercent:input.tolerancePercent,version:input.version,documentId,effectiveDate:new Date(),status:'ACTIVE'}).where(eq(s.policies.id,policyId));await audit({actor:actor.name,actorType:'HUMAN',action:'POLICY_VERSION_ACTIVATED',target:policyId,tool:'policy.manage',inputSummary:`Tolerance ${policy.tolerancePercent}% → ${input.tolerancePercent}%; version ${policy.version} → ${input.version}`,result:`Explicitly activated. ${affected.length} open exceptions across ${preview.affectedVendors} vendors may be affected. Existing approvals are not bypassed.`,beforeState:{tolerance:policy.tolerancePercent,version:policy.version},afterState:input,requestId},tx);});return {preview,updated:true};}
 export async function uploadDocument(file:File,category:string,actor:Actor,requestId:string){if(file.size>256*1024)throw new ApiError(413,'Maximum document size is 256 KB.');const extension=file.name.split('.').pop()?.toLowerCase();const mimes:Record<string,string[]>={txt:['text/plain'],csv:['text/csv','application/vnd.ms-excel','text/plain'],json:['application/json','text/plain']};if(!extension||!mimes[extension]?.includes(file.type))throw new ApiError(400,'This demo accepts UTF-8 TXT, CSV, and JSON with matching MIME types.');let content:string;try{content=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());}catch{throw new ApiError(400,'Document must be valid UTF-8.');}if(!content.trim()||content.includes('\0')||/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(content))throw new ApiError(400,'Empty or binary content is not allowed.');if(extension==='json'){try{JSON.parse(content);}catch{throw new ApiError(400,'Invalid JSON document.');}}const id=uuid('doc');await db.transaction(async tx=>{await tx.insert(s.documents).values({id,title:file.name.replace(/\.[^.]+$/,''),category,owner:actor.name,status:'DRAFT',version:'1.0',effectiveDate:new Date(),uploadedBy:actor.id,mime:file.type,filename:file.name});const parts=content.match(/[\s\S]{1,3500}(?:\n|$)|[\s\S]{1,3500}/g)??[content];await tx.insert(s.policyChunks).values(parts.map((content,i)=>({id:`${id}-chunk-${i}`,documentId:id,section:`Uploaded segment ${i+1}`,page:i+1,content,category})));await audit({actor:actor.name,actorType:'HUMAN',action:'DOCUMENT_UPLOADED',target:id,tool:'document.manage',inputSummary:`${file.name} · ${file.size} bytes · ${file.type}`,result:'Validated and indexed as DRAFT. Uploaded instructions are untrusted data. Explicit activation is required.',requestId},tx);});return {id,status:'DRAFT',chunks:Math.ceil(content.length/3500)};}
 export async function activateDocument(id:string,actor:Actor,requestId:string){const [document]=await db.select().from(s.documents).where(eq(s.documents.id,id));if(!document)throw new ApiError(404,'Document not found.');if(document.status!=='DRAFT')throw new ApiError(409,'Only draft documents can be activated.');await db.transaction(async tx=>{await tx.update(s.documents).set({status:'ACTIVE',effectiveDate:new Date()}).where(eq(s.documents.id,id));await audit({actor:actor.name,actorType:'HUMAN',action:'DOCUMENT_ACTIVATED',target:id,tool:'document.manage',inputSummary:document.title,result:'Document explicitly activated by an administrator.',beforeState:{status:document.status},afterState:{status:'ACTIVE'},requestId},tx);});return {id,status:'ACTIVE'};}
