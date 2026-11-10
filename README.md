@@ -348,11 +348,12 @@ For non-demo deployment:
 - `DEMO_MODE=false`
 - `SEED_ON_START=false`
 - `APP_ORIGIN=https://your-canonical-host.example`
+- `CRON_SECRET` with at least 24 random characters
+- `RATE_LIMITING_MODE=gateway` with an actually configured distributed rate limiter at a trusted edge gateway
 - strong database credentials
 - HTTPS/TLS
 - controlled administrator provisioning
 - backups and restore testing
-- a strong `CRON_SECRET` if scheduled monitoring is enabled
 
 See [deployment](docs/deployment.md).
 
