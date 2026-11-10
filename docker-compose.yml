@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: app_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - pilot_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,7 +19,7 @@ services:
       target: deps
     command: npx tsx scripts/migrate.ts
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/app_db
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/app_db
     depends_on:
       db:
         condition: service_healthy
@@ -30,10 +30,10 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/app_db
-      APP_ENV: ${APP_ENV:-development}
-      DEMO_MODE: ${DEMO_MODE:-true}
-      SEED_ON_START: ${SEED_ON_START:-true}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/app_db
+      APP_ENV: ${APP_ENV:?Set APP_ENV explicitly}
+      DEMO_MODE: ${DEMO_MODE:?Set DEMO_MODE explicitly}
+      SEED_ON_START: ${SEED_ON_START:-false}
       CRON_SECRET: ${CRON_SECRET:-}
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
