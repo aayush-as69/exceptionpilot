@@ -1,3 +1,48 @@
 # Retrieval
 
-Chunks retain document ID, title/version through joins, section, page, category, and exact source text. Retrieval excludes draft/archived/expired documents and inactive/expired linked policies. PostgreSQL full-text rank and transparent lexical overlap are combined for search; investigation can select the applicable policy by metadata. Returned excerpts are the stored source, never generated citations. Lexical match strength is not confidence or correctness probability. Uploaded documents start DRAFT and require administrator activation. Policy updates archive the previous document and create a new source version. This is not semantic/embedding RAG: pgvector and embedding providers are not implemented. No evaluation metrics are claimed without a labeled evaluation run.
+ExceptionPilot uses transparent policy retrieval rather than opaque semantic search.
+
+## Source model
+
+Policy chunks retain:
+
+- document ID
+- title/version
+- section
+- page
+- category
+- exact source text
+
+## Retrieval flow
+
+```mermaid
+flowchart LR
+    Q[Investigation query] --> F[Active + effective + unexpired filter]
+    F --> T[PostgreSQL text ranking]
+    F --> L[Lexical overlap]
+    T --> R[Combined retrieval]
+    L --> R
+    R --> E[Stored source excerpt]
+```
+
+Draft, archived, inactive, and expired sources are excluded from normal evidence retrieval.
+
+## Citation behavior
+
+Returned excerpts are stored source text.
+
+The system does not invent citations or rewrite an excerpt and present it as an original policy statement.
+
+## What this is not
+
+This is **not embedding-based semantic RAG**.
+
+The repository does not implement pgvector, embedding providers, reranker models, or external semantic retrieval APIs.
+
+## Evaluation
+
+Retrieval quality is not represented by an invented percentage.
+
+A valid benchmark should contain labeled expected evidence and measure at least retrieval recall, precision, citation correctness, and grounding.
+
+See [evaluation](evaluation.md).
