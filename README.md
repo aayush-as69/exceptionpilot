@@ -1,158 +1,399 @@
 # ExceptionPilot
 
-**An invoice exception-management demo built on Next.js and PostgreSQL.**
+<p align="center">
+  <img src="./public/exceptionpilot-logo.svg" alt="ExceptionPilot" width="96" />
+</p>
 
-A demo of invoice exception handling with explainable risk scoring, policy retrieval and human approval workflows. It is a working demo, not a full implementation of an enterprise specification, and it has no automated test suite yet (see [Testing and evaluation](#testing-and-evaluation)).
+<h1 align="center">ExceptionPilot</h1>
 
-## Overview
+<p align="center">
+  <strong>Explainable invoice exception management for finance teams.</strong><br/>
+  Investigate discrepancies, retrieve policy evidence, route approvals, and preserve an auditable decision trail.
+</p>
 
-ExceptionPilot connects invoice exceptions to structured financial records, explainable risk factors, versioned policy evidence, and explicit human approval. It is an investigator and workflow application—not a chatbot and not an autonomous payment system.
+<p align="center">
+  <a href="https://github.com/aayush-as69/exceptionpilot/actions"><img src="https://img.shields.io/github/actions/workflow/status/aayush-as69/exceptionpilot/ci.yml?label=CI" alt="CI status" /></a>
+  <a href="https://github.com/aayush-as69/exceptionpilot"><img src="https://img.shields.io/github/license/aayush-as69/exceptionpilot" alt="License" /></a>
+  <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" alt="Next.js 16" />
+  <img src="https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/PostgreSQL-17-4169e1?logo=postgresql" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Drizzle-ORM-c5f74f" alt="Drizzle ORM" />
+</p>
 
-The default screen is a polished, responsive overview with live PostgreSQL metrics, a priority queue, risk distribution, activity, and vendor watchlist. The central seeded case is **INV-1042**: PO **₹1,10,000**, invoice **₹1,24,000**, difference **₹14,000 / 12.73%**, policy tolerance **5%**.
+---
 
-## Features implemented
+## What is ExceptionPilot?
 
-- Overview, exception queue, personal queue, invoices, purchase orders, goods receipts, vendor profiles, approvals, tasks, policies, documents, analytics, copilot, audit, administration, settings.
-- PostgreSQL persistence through Drizzle; foreign keys, indexes, transactions, row locks, unique idempotency keys.
-- Exact integer-minor-unit financial totals and three-way matching checks.
-- Exact and near-duplicate indicators, transparent additive risk scoring, historical case lookup.
-- Deterministic investigation reports with concise decision factors and traceable source excerpts.
-- Version-aware policy retrieval using PostgreSQL keyword ranking, lexical overlap, and metadata filtering.
-- Human approval requests, role hierarchy, separation of duties, single-use decisions, controlled invoice holds, follow-up tasks, and communication drafts.
-- Simulations that do not execute a financial action.
-- Append-only audit events enforced by a PostgreSQL trigger; JSON evidence packets and client-generated PDF reports.
-- Validated TXT/CSV/JSON uploads, draft activation, archived source versions, policy-change impact previews.
-- SLA indicators and idempotent monitoring/escalation, runnable manually or by an authenticated scheduler.
-- Session authentication, scrypt password hashing, granular backend RBAC, login/API throttling, origin checks, secure headers, sensitive-field masking.
-- Real workspace analytics, risk × impact heatmap, root-cause grouping, preventive recommendations, resolution feedback, reusable playbooks.
-- Light/dark themes, responsive record layouts, Ctrl/Cmd+K search, notifications, CSV/JSON/PDF exports.
+ExceptionPilot is a finance workflow application for investigating **invoice exceptions** before they become payment problems.
 
-## Architecture and stack choice
+It brings together:
 
-The provided runtime is a **Next.js App Router + TypeScript + PostgreSQL/Drizzle** environment. Option B keeps that deployable stack instead of introducing a separate Vite/FastAPI service. React server components load permission-filtered snapshots; client components handle interaction; App Router route handlers expose REST APIs; domain, investigation, retrieval, workflow, and audit services are separated under `src/lib`.
+- 🔎 **Exception investigation** — compare PO, invoice, and goods-receipt data.
+- ⚖️ **Explainable risk scoring** — show the factors behind a risk result.
+- 📚 **Policy evidence** — retrieve the applicable policy version and source excerpt.
+- 👤 **Human approval** — enforce role authority and separation of duties.
+- 🧾 **Auditability** — record decisions and before/after state changes.
+- 🧪 **Simulation** — preview sensitive workflows without mutating financial state.
+- 📊 **Analytics** — monitor exposure, risk, SLAs, root causes, and resolution trends.
 
-- `src/app`: pages, route handlers, health/readiness.
-- `src/components`: responsive UI, charts, queue, investigation drawer, settings.
-- `src/lib/domain.ts`: exact financial logic, risk rules, state transitions, permission registry.
-- `src/lib/actions.ts`: controlled workflows and monitoring.
-- `src/lib/investigation.ts`: structured decision records and evidence packets.
-- `src/lib/retrieval.ts`: active-version policy retrieval.
-- `src/db`: PostgreSQL connection and schema.
-- `drizzle`: migrations, including append-only audit enforcement.
-- `scripts`: migration, seed, production admin provisioning.
+> **Important:** ExceptionPilot is a scoped, single-tenant demonstration. It is not an autonomous payment system and does not release payments.
 
-See [architecture](docs/architecture.md), [database](docs/database.md), and [workflows](docs/workflows.md).
+## Demo scenario
 
-## Screenshots
+The seeded investigation centers on **INV-1042**:
 
-No screenshot is bundled or fabricated. The running root page is the overview; open `/?exception=EXC-1042` for the seeded investigation. Capture screenshots locally if needed for your deployment documentation.
+| Field | Value |
+|---|---:|
+| Purchase order | ₹1,10,000 |
+| Invoice | ₹1,24,000 |
+| Variance | ₹14,000 |
+| Variance % | 12.73% |
+| Policy tolerance | 5% |
 
-## AI architecture and limitations
+The workflow makes the decision path visible instead of hiding it behind an AI-generated answer.
 
-**No external LLM is connected.** The only implemented provider is `mock / deterministic-rules-v1`. It reads real records, performs deterministic checks, retrieves real stored evidence, and returns structured findings. It does not pretend to be Gemini or OpenAI. The agent is read-only; all financial state changes require explicit human requests and backend authorization.
+---
 
-OpenAI/Gemini adapters, embeddings, autonomous agent orchestration, external email, and ERP integrations are not implemented. Agent run latency is measured; external token count and estimated external-model cost are zero because no model is called. No hidden chain-of-thought is stored. See [AI agent](docs/ai-agent.md).
+## Product flow
 
-## RAG architecture
+```mermaid
+flowchart LR
+    A[Invoice exception] --> B[Match PO / Invoice / GRN]
+    B --> C[Risk factors]
+    C --> D[Retrieve applicable policy]
+    D --> E[Investigation report]
+    E --> F{Human approval}
+    F -->|Approve hold| G[Hold + task + draft]
+    F -->|Reject| H[Resolution + rationale]
+    G --> I[Audit trail]
+    H --> I
+```
 
-Policy chunks retain source document, version, section, page, category, and text. Retrieval filters active/effective/unexpired sources, combines PostgreSQL full-text ranking with lexical overlap, and returns the actual excerpt. Metadata-selected investigation evidence is explicitly labeled. This is **hybrid keyword/lexical retrieval, not embedding-based semantic RAG**. No citation or model-confidence percentage is fabricated. See [RAG](docs/rag.md).
+Every sensitive mutation is authorized on the backend. Investigation and simulation remain read-only.
 
-## Security and RBAC
+---
 
-Roles: AP Clerk, AP Manager, Finance Manager, Finance Director, Procurement, Compliance, Auditor, Administrator. Administrator does **not** inherit financial approval authority. Higher finance roles can satisfy lower finance approval thresholds; compliance-sensitive cases require Compliance. Requesters cannot approve their own requests.
+## Key capabilities
 
-Sessions use random tokens with only SHA-256 digests stored in PostgreSQL, HTTP-only/SameSite cookies, and an eight-hour expiry. Production-mode cookies require HTTPS. Passwords use salted scrypt. Mutations check origin and permissions again on the server. See [security](docs/security.md) and [threat model](docs/threat-model.md).
+### Investigation
+- Three-way matching checks
+- Exact integer-minor-unit financial calculations
+- Variance and tolerance analysis
+- Duplicate and near-duplicate indicators
+- Historical case lookup
+- Deterministic investigation reports
+- Traceable evidence excerpts
 
-## Approval workflow and demo flow
+### Policy retrieval
+- Active/effective/unexpired policy filtering
+- PostgreSQL full-text ranking
+- Transparent lexical overlap
+- Version-aware source metadata
+- Exact stored excerpts
+- Draft → activation → archive lifecycle
 
-1. Open the dashboard and select **INV-1042**.
-2. Review exact PO/invoice/GRN checks and risk factors.
-3. Select **Run investigation**. A pending approval remains pending; investigation is read-only.
-4. Review **Evidence & policy** and optionally **Simulate**.
-5. The seeded **APR-1042** request is already awaiting review. New cases use **Request approval**.
-6. Check the evidence-review confirmation and select **Approve hold**. Default demo user Alex Morgan is a Finance Director; you can switch to Sarah Miller or David Park in Settings.
-7. The backend records the decision, places the invoice on hold, resolves the exception, creates a procurement task, drafts a vendor message, and appends an audit event.
-8. Review the audit timeline, communication draft, and evidence export. Give resolution feedback.
+### Workflow
+- Role-aware approval thresholds
+- Separation of duties
+- Single-use approval decisions
+- Invoice holds
+- Procurement follow-up tasks
+- Vendor communication drafts
+- SLA monitoring and escalation
+- Idempotent workflow events
 
-No payment is released and no email is sent. Repeating a decided approval returns a conflict.
+### Security
+- scrypt password hashing
+- Digest-only session tokens
+- HTTP-only SameSite cookies
+- Production HTTPS cookie enforcement
+- Backend RBAC and permission checks
+- Origin validation
+- Security headers/CSP
+- Upload validation
+- Masked sensitive identifiers
+- Append-only audit trigger
 
-## Database
+### UI
+- Responsive workspace
+- Light/dark themes
+- Command search (`Ctrl/Cmd + K`)
+- Notifications
+- Record drawers and detail views
+- CSV/JSON/PDF exports
+- Analytics and risk heatmaps
 
-The schema includes users, roles, sessions, vendors, purchase orders, goods receipts, invoices, exceptions, approvals, tasks, notifications, documents, policy chunks, policies, audit events, agent runs, communications, feedback, settings, and playbooks. Line items are typed JSONB on their parent financial records. Amounts are integer paise. This demo does not implement separate item/version/risk-history tables from the full enterprise specification.
+---
 
-For a **fresh database**, run `npx tsx scripts/migrate.ts`. The current preview schema was initially applied with `drizzle-kit push`; do not run the initial migration over an already-pushed, unbaselined database. For local development only, `npx drizzle-kit push` is available.
+## AI architecture
 
-## API
+ExceptionPilot deliberately does **not** pretend to use an external LLM.
 
-Open `/workspace/api-docs` for the endpoint browser or `/api/openapi` for OpenAPI 3.0 JSON. REST collections cover the core modules. Collection endpoints use a bounded recent-record snapshot, not an unbounded production query API. See [API](docs/api.md).
+The current provider is:
+
+**`mock / deterministic-rules-v1`**
+
+It reads real application records and stored policy evidence, performs deterministic checks, and returns structured findings.
+
+It does **not**:
+
+- call OpenAI or Gemini;
+- generate fake citations;
+- store hidden chain-of-thought;
+- execute financial actions;
+- claim calibrated model confidence.
+
+The copilot is permission-aware and evidence-driven. External LLM adapters and autonomous tool orchestration are future work.
+
+See [AI architecture](docs/ai-agent.md).
+
+---
+
+## Retrieval / RAG
+
+The retrieval layer is intentionally transparent.
+
+```text
+Policy sources
+    │
+    ├── document + version metadata
+    ├── section / page
+    └── exact source text
+            │
+            ▼
+   Active + effective filter
+            │
+            ▼
+ PostgreSQL ranking + lexical overlap
+            │
+            ▼
+      Stored source excerpt
+```
+
+This is **hybrid keyword/lexical retrieval**, not embedding-based semantic RAG.
+
+No Recall@5, precision, grounding, or hallucination metric is claimed without a labeled evaluation run.
+
+See [retrieval](docs/rag.md) and [evaluation](docs/evaluation.md).
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    UI[Next.js App Router UI]
+    API[Route handlers / API]
+    DOMAIN[Domain + workflow services]
+    INVEST[Investigation service]
+    RETRIEVE[Policy retrieval]
+    DB[(PostgreSQL)]
+    AUDIT[Append-only audit]
+
+    UI --> API
+    UI --> DOMAIN
+    API --> DOMAIN
+    DOMAIN --> INVEST
+    DOMAIN --> RETRIEVE
+    DOMAIN --> DB
+    INVEST --> DB
+    RETRIEVE --> DB
+    DOMAIN --> AUDIT
+    AUDIT --> DB
+```
+
+See [architecture](docs/architecture.md).
+
+---
+
+## Repository guide
+
+| Path | Purpose |
+|---|---|
+| `src/app` | Pages, route handlers, health/readiness endpoints |
+| `src/components` | Workspace UI, charts, queues, drawers, settings |
+| `src/lib/domain.ts` | Financial logic, risk rules, state transitions, permissions |
+| `src/lib/actions.ts` | Controlled workflows and monitoring |
+| `src/lib/investigation.ts` | Investigation reports and evidence packets |
+| `src/lib/retrieval.ts` | Version-aware policy retrieval |
+| `src/db` | PostgreSQL connection and schema |
+| `drizzle` | Database migrations and audit enforcement |
+| `scripts` | Migration, seed, packaging, and admin provisioning |
+| `docs` | Architecture, security, API, workflow, testing, and deployment docs |
+| `public` | Brand assets and static files |
+
+---
+
+## Screenshots & visual documentation
+
+The repository currently contains no captured runtime screenshots. Rather than inventing screenshots, this documentation uses Mermaid diagrams and a dedicated visual-documentation guide.
+
+For a real deployment, capture these four views and place them in `docs/screenshots/`:
+
+1. **Overview** — dashboard metrics, priority queue, risk distribution.
+2. **Investigation** — INV-1042 matching, risk factors, and policy evidence.
+3. **Approval** — approval decision, authority checks, and confirmation.
+4. **Audit** — final decision, timeline, evidence export, and resolution feedback.
+
+See [screenshot guide](docs/screenshots.md).
+
+---
 
 ## Local setup
 
-Requirements: Node.js 22+, npm, PostgreSQL 17+ (or a compatible supported PostgreSQL instance).
+### Requirements
 
-1. Clone the repo: `git clone https://github.com/aayush-as69/exceptionpilot && cd exceptionpilot`.
-2. Run `npm install`.
-3. Copy `.env.example` to `.env` and set `DATABASE_URL` for your local database.
-4. On a fresh database, run `npx tsx scripts/migrate.ts`.
-5. Run `npx tsx scripts/seed.ts`.
-6. Run `npm run dev` and open http://localhost:3000.
+- Node.js 22+
+- npm
+- PostgreSQL 17+ or a compatible PostgreSQL instance
 
-For a production-mode local build: run `npx next typegen`, `npm exec tsc -- --noEmit --pretty false`, `npm run build`, then `npm run start`. The platform preview uses its managed build/start runner.
+### 1. Clone
 
-## Environment variables
+```bash
+git clone https://github.com/aayush-as69/exceptionpilot.git
+cd exceptionpilot
+```
 
-See `.env.example`. Important settings:
+### 2. Install
 
-- `DATABASE_URL`: server-side PostgreSQL connection.
-- `DEMO_MODE=true`: enables explicit development-only demo access and role switching.
-- `APP_ENV=production` and `DEMO_MODE=false`: disable anonymous demo fallback and role switching.
-- `SEED_ON_START`: seed only when explicitly enabled; demo mode also seeds its development workspace.
-- `CRON_SECRET`: optional random secret of at least 24 characters for `POST /api/cron`.
-- `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD`: used only by the explicit admin-provisioning script.
+```bash
+npm ci
+```
 
-No LLM API key is required or read in Option B. Never commit `.env` or real credentials.
+### 3. Configure environment
 
-## Demo credentials — DEVELOPMENT ONLY
+```bash
+cp .env.example .env
+```
 
-All seeded accounts use **`Demo!Pilot2026`**. Emails use `@exceptionpilot.demo`.
+Set `DATABASE_URL` for your PostgreSQL instance.
 
-| User | Email prefix | Role |
-|---|---|---|
-| Jamie Chen | clerk | AP Clerk |
-| Sarah Miller | manager | AP Manager |
-| David Park | finance | Finance Manager |
-| Alex Morgan | director | Finance Director |
-| Priya Sharma | procurement | Procurement |
-| Olivia Wilson | compliance | Compliance |
-| James Taylor | auditor | Auditor |
-| Taylor Reed | admin | Administrator |
+### 4. Prepare the database
 
-These are public demo credentials, not production secrets. Disable demo mode and seed-on-start before non-demo deployment.
+For a fresh database:
 
-## Testing and evaluation
+```bash
+npx tsx scripts/migrate.ts
+npx tsx scripts/seed.ts
+```
 
-No automated tests have been written yet. CI runs type generation, lint and typecheck on every push and pull request; earlier build and startup checks are recorded in `VALIDATION.md`. These are build checks, not a substitute for a full test suite.
+### 5. Start the app
 
-No RAG evaluation percentages are displayed or claimed. A formal labeled evaluation dataset and Recall@5/precision/grounding suite remain future work. See [testing](docs/testing.md) and [evaluation](docs/evaluation.md).
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+---
+
+## Demo accounts
+
+> These credentials are for development/demo mode only.
+
+All seeded accounts use:
+
+`Demo!Pilot2026`
+
+| User | Role |
+|---|---|
+| Jamie Chen | AP Clerk |
+| Sarah Miller | AP Manager |
+| David Park | Finance Manager |
+| Alex Morgan | Finance Director |
+| Priya Sharma | Procurement |
+| Olivia Wilson | Compliance |
+| James Taylor | Auditor |
+| Taylor Reed | Administrator |
+
+Disable demo mode and seed-on-start before using non-demo data.
+
+---
+
+## API
+
+Open:
+
+- `/workspace/api-docs` — interactive endpoint browser
+- `/api/openapi` — OpenAPI 3.0 JSON
+- `/health` — lightweight liveness
+- `/ready` — database/readiness check
+- `/api/health` — application health
+
+See [API reference](docs/api.md).
+
+---
+
+## Validation
+
+The latest documented checks include:
+
+- Next.js route type generation
+- TypeScript compilation
+- Production build
+- Managed startup
+- Health/readiness endpoints
+- Core workspace routes
+- OpenAPI endpoint
+- Runtime dependency audit
+
+The repository explicitly does **not** claim a full automated test suite, formal RAG benchmark, Docker execution, or cloud deployment unless those checks are recorded in [VALIDATION.md](VALIDATION.md).
+
+---
 
 ## Deployment
 
-`Dockerfile` uses a multi-stage standalone Next.js build and non-root runtime. `docker-compose.yml` starts PostgreSQL, applies migrations, then starts the app. Run `docker compose up --build` for the explicitly development-only local demo. Docker execution is not claimed unless recorded in `VALIDATION.md`.
+A multi-stage Dockerfile and development Docker Compose setup are included.
 
-For non-demo use, set `APP_ENV=production`, `DEMO_MODE=false`, `SEED_ON_START=false`, use a strong database password, terminate TLS, and provision an administrator with `npx tsx scripts/provision-admin.ts`. The admin can configure the workspace but cannot approve financial actions. Additional finance users require a controlled provisioning process. See [deployment](docs/deployment.md).
+```bash
+docker compose up --build
+```
 
-## Troubleshooting
+For non-demo deployment:
 
-- **Missing DATABASE_URL:** copy the example environment file and configure your database.
-- **Relation already exists during migrate:** the database was pushed without a migration baseline. Use a fresh database or baseline it deliberately; do not drop financial data.
-- **Sign-in loop:** demo fallback is disabled in production. Sign in with a provisioned account over HTTPS.
-- **Approval forbidden:** check role hierarchy, compliance requirement, and separation of duties.
-- **No citations:** activate an effective, unexpired source document. The app intentionally refuses to invent evidence.
-- **No automatic background timer:** use the Administration monitor button or schedule the authenticated cron endpoint.
-- **ZIP unavailable:** regenerate it using `python3 scripts/package.py` after building.
+- `APP_ENV=production`
+- `DEMO_MODE=false`
+- `SEED_ON_START=false`
+- strong database credentials
+- HTTPS/TLS
+- controlled administrator provisioning
+- backups and restore testing
+- a strong `CRON_SECRET` if scheduled monitoring is enabled
 
-## Known limitations / future roadmap
+See [deployment](docs/deployment.md).
 
-This is a functional, scoped demo—not the complete production-grade platform in the original request. Not implemented: external LLM providers, semantic embeddings/pgvector, PDF/DOCX/XLSX/image ingestion, live ERP/payment/email integrations, a durable distributed job queue, full historical financial versioning, calibrated model confidence, a formal evaluation/test suite, distributed rate limiting, enterprise SSO/MFA, custom-type detection logic, and comprehensive vendor anomaly detection. Some analytics use a bounded 250-record snapshot; headline metrics use SQL aggregates. Historical items are JSONB. Uploaded binary documents are rejected rather than silently mishandled.
+---
 
-Before production: add the missing provider/integration adapters, durable jobs, object storage and malware scanning, full authorization/tenant isolation review, migrations and backup/restore drills, observability, accessibility audit, security review, and the complete automated test/evaluation program. See [feature checklist](docs/features.md).
+## Documentation
+
+| Document | Covers |
+|---|---|
+| [Architecture](docs/architecture.md) | System boundaries and request flow |
+| [Database](docs/database.md) | Schema, migrations, financial precision |
+| [Workflows](docs/workflows.md) | Investigation, approval, holds, tasks |
+| [AI agent](docs/ai-agent.md) | Deterministic investigation provider |
+| [Retrieval](docs/rag.md) | Policy evidence and retrieval |
+| [Security](docs/security.md) | Authentication and authorization controls |
+| [Threat model](docs/threat-model.md) | Assets, boundaries, mitigations, residual risks |
+| [API](docs/api.md) | Endpoint behavior and permissions |
+| [Testing](docs/testing.md) | Current validation/testing boundary |
+| [Evaluation](docs/evaluation.md) | RAG and AI evaluation status |
+| [Features](docs/features.md) | Implemented vs. future functionality |
+| [Deployment](docs/deployment.md) | Local, Docker, and production guidance |
+| [Validation](VALIDATION.md) | Checks actually performed |
+
+---
+
+## Project status
+
+**Status: functional demonstration / development**
+
+The strongest part of ExceptionPilot is its explicit workflow model: deterministic financial checks, version-aware policy evidence, backend authorization, human approval, simulation, and auditability are designed to work together.
+
+The next production-oriented steps are automated tests, formal retrieval evaluation, external integrations, durable background jobs, SSO/MFA, tenant isolation, object storage/malware scanning, observability, and an independent security review.
+
+---
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
