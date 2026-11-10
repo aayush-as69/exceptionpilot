@@ -38,6 +38,12 @@ export function validateRuntimeConfiguration(env: Record<string, string | undefi
     } catch {
       throw new Error('APP_ORIGIN must be a canonical HTTPS origin without a path or trailing slash.');
     }
+    if (!env.CRON_SECRET || env.CRON_SECRET.length < 24) {
+      throw new Error('CRON_SECRET must contain at least 24 characters in production.');
+    }
+    if (env.RATE_LIMITING_MODE !== 'gateway') {
+      throw new Error('RATE_LIMITING_MODE=gateway is required in production. Configure distributed throttling at a trusted gateway.');
+    }
   }
 }
 
