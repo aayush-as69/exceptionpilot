@@ -14,8 +14,11 @@ test('runtime configuration rejects missing and unsafe production settings', () 
   assert.throws(() => validateRuntimeConfiguration({ APP_ENV: 'production', DEMO_MODE: 'true', DATABASE_URL: 'postgres://db', SEED_ON_START: 'false', APP_ORIGIN: 'https://example.com' }), /DEMO_MODE/);
   assert.throws(() => validateRuntimeConfiguration({ APP_ENV: 'production', DEMO_MODE: 'false', DATABASE_URL: 'postgres://db', SEED_ON_START: 'true', APP_ORIGIN: 'https://example.com' }), /SEED_ON_START/);
   assert.throws(() => validateRuntimeConfiguration({ APP_ENV: 'production', DEMO_MODE: 'false', DATABASE_URL: 'postgres://db', SEED_ON_START: 'false' }), /APP_ORIGIN/);
-  assert.throws(() => validateRuntimeConfiguration({ APP_ENV: 'production', DEMO_MODE: 'false', DATABASE_URL: 'postgres://db', SEED_ON_START: 'false', APP_ORIGIN: 'https://example.com/path' }), /canonical HTTPS origin/);
-  assert.doesNotThrow(() => validateRuntimeConfiguration({ APP_ENV: 'production', DEMO_MODE: 'false', DATABASE_URL: 'postgres://db', SEED_ON_START: 'false', APP_ORIGIN: 'https://example.com' }));
+  const safeProduction = { APP_ENV: 'production', DEMO_MODE: 'false', DATABASE_URL: 'postgres://db', SEED_ON_START: 'false', APP_ORIGIN: 'https://example.com', CRON_SECRET: 'a'.repeat(32), RATE_LIMITING_MODE: 'gateway' };
+  assert.throws(() => validateRuntimeConfiguration({ ...safeProduction, APP_ORIGIN: 'https://example.com/path' }), /canonical HTTPS origin/);
+  assert.throws(() => validateRuntimeConfiguration({ ...safeProduction, CRON_SECRET: 'short' }), /CRON_SECRET/);
+  assert.throws(() => validateRuntimeConfiguration({ ...safeProduction, RATE_LIMITING_MODE: 'local' }), /RATE_LIMITING_MODE=gateway/);
+  assert.doesNotThrow(() => validateRuntimeConfiguration(safeProduction));
 });
 
 test('origin validation compares with the canonical configured origin', () => {
