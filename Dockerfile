@@ -10,6 +10,8 @@ ENV APP_ENV=production
 ENV DEMO_MODE=false
 ENV SEED_ON_START=false
 ENV APP_ORIGIN=https://build.invalid
+ENV CRON_SECRET=build-only-secret-value-1234567890
+ENV RATE_LIMITING_MODE=gateway
 ENV DATABASE_URL=postgresql://build-only:build-only@127.0.0.1:5432/build-only
 RUN npm run build
 
