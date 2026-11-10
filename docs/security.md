@@ -1,7 +1,78 @@
 # Security
 
-Implemented: salted scrypt passwords; random session tokens stored as SHA-256 digests; HTTP-only SameSite=Lax cookies; eight-hour expiry; HTTPS-only cookies in APP_ENV=production; active-user checks; granular backend permissions; financial role hierarchy; separation of duties; transactional single-use approvals; bounded JSON parsing; upload extension/MIME/UTF-8/size validation; parameterized Drizzle queries; React text escaping; origin checks; restrictive CSP/security headers; masked vendor identifiers; append-only audit trigger; explicit production disablement of demo access.
+ExceptionPilot applies security controls at the browser, API, workflow, and database layers.
 
-Demo mode intentionally allows anonymous development access as Finance Director and role switching. It must be disabled for real data. Compose defaults are local-development defaults, not a production security baseline. The provisioning script reads credentials from environment variables and does not log them. The archive excludes .env.
+## Authentication
 
-Remaining controls before production: SSO/MFA, distributed throttling, tenant isolation, secret rotation, malware scanning, object storage, proxy-level upload limits, nonce-based CSP, dependency/dev-tool advisory remediation, penetration testing, backup/restore tests, and formal session revocation review. In-memory throttling is per process. Reverse proxies must overwrite forwarded headers. Audit append-only controls do not protect against a database superuser bypassing triggers.
+- Passwords use salted scrypt hashing.
+- Sessions use random tokens.
+- PostgreSQL stores SHA-256 session digests rather than raw tokens.
+- Cookies are HTTP-only and SameSite=Lax.
+- Sessions expire after eight hours.
+- Production cookies require HTTPS.
+- Active-user status is checked during authorization.
+
+## Authorization
+
+Authorization is enforced on the backend.
+
+Controls include:
+
+- granular permissions;
+- finance role hierarchy;
+- approval thresholds;
+- separation of duties;
+- compliance-sensitive approval requirements;
+- server-side re-checks for mutations.
+
+The administrator role does not automatically inherit financial approval authority.
+
+## Input and request protection
+
+- Zod validation for structured actions.
+- Bounded JSON parsing.
+- Parameterized database queries through Drizzle.
+- Upload extension, MIME, UTF-8, and size validation.
+- Origin checks for browser mutations.
+- Restrictive security headers and CSP.
+- Masking of sensitive vendor identifiers.
+
+## Audit protection
+
+Audit events are append-only at the PostgreSQL trigger layer.
+
+The application cannot simply rewrite the audit history through normal mutation paths.
+
+## Demo mode
+
+Demo mode intentionally provides development conveniences such as anonymous fallback access and role switching.
+
+It must not be used with real financial data.
+
+Before non-demo deployment:
+
+```text
+APP_ENV=production
+DEMO_MODE=false
+SEED_ON_START=false
+```
+
+## Remaining production controls
+
+Before production use, add and independently verify:
+
+- SSO/MFA
+- distributed throttling
+- tenant isolation
+- secret rotation
+- malware scanning
+- object storage controls
+- proxy-level upload limits
+- nonce-based CSP
+- dependency remediation
+- penetration testing
+- backup/restore drills
+- formal session revocation review
+- security monitoring
+
+High risk is never treated as proof of fraud.
