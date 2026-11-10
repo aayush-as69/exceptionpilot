@@ -43,7 +43,7 @@ export async function handleApi(req:NextRequest,path:string[]){const requestId=r
   }
   if(path[0]==='ready'&&method==='GET'){await db.execute(sql`select 1`);return json({ready:true,database:'connected',llm:'not connected',provider:'mock'},requestId);}
   if(path[0]==='openapi'&&method==='GET')return json(openApi(),requestId);
-  if(path[0]==='workspace'&&method==='GET'){const actor=await currentActor();return json(await getWorkspace(actor,demoEnabled()),requestId);}
+  if(path[0]==='workspace'&&method==='GET'){const actor=await requireActor('exception.read');return json(await getWorkspace(actor,demoEnabled()),requestId);}
   if(path[0]==='tools'&&method==='GET'){await requireActor('invoice.read');return json({tools:TOOL_REGISTRY,agentMaximumLevel:'L0'},requestId);}
   if(path[0]==='copilot'&&method==='POST'){const actor=await requireActor('exception.read');const input=z.object({question:z.string().min(3).max(2000),exceptionId:idSchema.optional()}).parse(await body(req));rateLimit(`copilot:${actor.id}`,20);return json(await askCopilot(input.question,actor,input.exceptionId,requestId),requestId);}
   if(path[0]==='exceptions'){
