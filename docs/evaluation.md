@@ -1,0 +1,3 @@
+# Evaluation status
+
+No labeled RAG evaluation dataset or evaluation run is included. Recall@5, precision, citation correctness, grounding, policy accuracy, and hallucination rate are therefore unmeasured, not zero and not invented. The UI shows no fake benchmark percentages. Resolution feedback is stored for future curated evaluation but never trains or changes production logic automatically. Future work: label applicable policy versions and expected evidence, include expired/contradictory/injection cases, run reproducible retrieval comparisons, and review citation grounding manually before reporting metrics.

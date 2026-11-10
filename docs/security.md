@@ -1,0 +1,7 @@
+# Security
+
+Implemented: salted scrypt passwords; random session tokens stored as SHA-256 digests; HTTP-only SameSite=Lax cookies; eight-hour expiry; HTTPS-only cookies in APP_ENV=production; active-user checks; granular backend permissions; financial role hierarchy; separation of duties; transactional single-use approvals; bounded JSON parsing; upload extension/MIME/UTF-8/size validation; parameterized Drizzle queries; React text escaping; origin checks; restrictive CSP/security headers; masked vendor identifiers; append-only audit trigger; explicit production disablement of demo access.
+
+Demo mode intentionally allows anonymous development access as Finance Director and role switching. It must be disabled for real data. Compose defaults are local-development defaults, not a production security baseline. The provisioning script reads credentials from environment variables and does not log them. The archive excludes .env.
+
+Remaining controls before production: SSO/MFA, distributed throttling, tenant isolation, secret rotation, malware scanning, object storage, proxy-level upload limits, nonce-based CSP, dependency/dev-tool advisory remediation, penetration testing, backup/restore tests, and formal session revocation review. In-memory throttling is per process. Reverse proxies must overwrite forwarded headers. Audit append-only controls do not protect against a database superuser bypassing triggers.

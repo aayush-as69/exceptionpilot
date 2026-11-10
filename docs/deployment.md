@@ -1,0 +1,7 @@
+# Deployment
+
+Local demo: npm ci; configure .env; migrate a fresh database; seed; npm run dev. Docker demo: docker compose up --build. Compose starts PostgreSQL, runs the migration service to completion, then starts the standalone Next.js server. The web port binds to localhost. Demo defaults are explicit and development-only.
+
+Non-demo: set APP_ENV=production, DEMO_MODE=false, SEED_ON_START=false, a strong POSTGRES_PASSWORD and corresponding DATABASE_URL, and terminate TLS. Provision an administrator using ADMIN_EMAIL/ADMIN_PASSWORD with npx tsx scripts/provision-admin.ts. Use HTTPS so production session cookies are accepted. Add a trusted reverse proxy that overwrites forwarded headers and limits request bodies. Schedule POST /api/cron with a strong CRON_SECRET if continuous monitoring is needed. Configure backups and test restore before real use.
+
+Standalone output requires copying .next/static and public, as the Dockerfile does. /ready verifies schema seed readiness and database connectivity; /health is lightweight liveness. Docker build/runtime execution is not assumed; see VALIDATION.md for checks actually performed. This archive does not include cloud credentials or claim a cloud deployment.

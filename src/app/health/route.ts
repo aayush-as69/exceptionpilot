@@ -1,0 +1,4 @@
+import { db } from '@/db';
+import { sql } from 'drizzle-orm';
+export const dynamic = 'force-dynamic';
+export async function GET() { try { await db.execute(sql`select 1`); return Response.json({status:'ok',database:'connected',service:'exceptionpilot-option-b'},{headers:{'Cache-Control':'no-store'}}); } catch { return Response.json({status:'unhealthy',database:'unavailable'},{status:503}); } }

@@ -1,0 +1,4 @@
+import { db } from '@/db';
+import { auditEvents } from '@/db/schema';
+export type AuditInput = { actor: string; actorType: 'HUMAN' | 'AGENT' | 'SYSTEM'; action: string; target: string; inputSummary: string; result: string; tool?: string; risk?: number; approval?: string; beforeState?: unknown; afterState?: unknown; requestId: string; idempotencyKey?: string };
+export async function audit(input: AuditInput, executor: Pick<typeof db, 'insert'> = db) { await executor.insert(auditEvents).values({ actor: input.actor, actorType: input.actorType, action: input.action, target: input.target, inputSummary: input.inputSummary, result: input.result, tool: input.tool, risk: input.risk, approval: input.approval, beforeState: input.beforeState ?? null, afterState: input.afterState ?? null, requestId: input.requestId, idempotencyKey: input.idempotencyKey }); }

@@ -1,0 +1,7 @@
+# Threat model
+
+Assets: financial records, vendor identifiers, policy sources, approval decisions, sessions, and audit history. Trust boundaries: browser/API, uploaded text/retrieval, database, optional scheduler, and future external providers.
+
+Mitigations include backend RBAC, approval authority and separation of duties, locked single-use decisions, parameterized queries, React escaping, origin checks, bounded JSON, validated text uploads, masked identifiers, session expiry, throttling, safe mock failure, and an audit mutation trigger. Documents and questions cannot grant tool authority. The copilot rejects common override/exfiltration instructions; no external LLM receives retrieved text in this demo.
+
+Remaining threats: malicious binary formats (rejected, not scanned), oversized uploads through a misconfigured proxy, distributed API abuse, stolen demo credentials, superuser audit tampering, compromised dependencies, proxy header spoofing, missing tenant isolation, and incomplete anomaly detection. Demo mode is intentionally unsafe for real data. Production requires TLS, secret management, proxy limits, dependency remediation, SSO/MFA, monitoring, backups, and independent security review. High risk is never labeled proof of fraud.

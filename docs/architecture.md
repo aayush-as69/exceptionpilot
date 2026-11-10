@@ -1,0 +1,3 @@
+# Architecture
+
+Option B uses the supplied Next.js App Router runtime rather than adding Vite and FastAPI. TypeScript is shared across UI and backend; PostgreSQL is accessed only through Drizzle. Server components authenticate and load bounded snapshots. Route handlers validate input and enforce permissions. Financial logic is deterministic and independent of any model. The mock investigation provider reads records and returns concise decision factors, not hidden reasoning. Workflow mutations use transactions and row locks. Audit immutability is enforced in PostgreSQL. The UI never decides whether a sensitive action is authorized. This single-tenant demo has no external service dependency besides PostgreSQL and optional Google Fonts.
