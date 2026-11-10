@@ -36,6 +36,7 @@ services:
       SEED_ON_START: ${SEED_ON_START:-false}
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
       CRON_SECRET: ${CRON_SECRET:-}
+      RATE_LIMITING_MODE: ${RATE_LIMITING_MODE:-local}
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
     depends_on:
