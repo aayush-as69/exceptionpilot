@@ -2,16 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import * as s from '@/db/schema';
-import { Actor, OPEN_STATES, ROLE_NAMES, TRANSITIONS, money, requiredApprovalRole, riskBand } from './domain';
+import { Actor, OPEN_STATES, ROLE_NAMES, TRANSITIONS, money, riskBand } from './domain';
 import { ApiError } from './auth';
 import { audit } from './audit';
 import { applicablePolicy, searchEvidence } from './retrieval';
-import { canApproveRole } from './security-policy';
-type ApprovalRule = { max: number | null; role: string };
+import { canApproveRole, resolveApprovalRole, type ApprovalRule } from './security-policy';
 const uuid = (prefix: string) => `${prefix}-${randomUUID()}`;
 async function getException(id: string, tx: Pick<typeof db,'select'> = db, lock = false) { const query = tx.select().from(s.exceptions).where(eq(s.exceptions.id,id)).limit(1); const [row] = lock ? await query.for('update') : await query; if(!row) throw new ApiError(404,'Exception not found.'); return row; }
 function transition(from: string, to: string) { if(!TRANSITIONS[from]?.includes(to)) throw new ApiError(409, `Transition ${from} → ${to} is not permitted.`); }
-export async function approvalRequirement(e: {amount:number;riskScore:number;type:string}) { const [setting] = await db.select().from(s.settings).where(eq(s.settings.key,'approvalRules')); const rules = setting?.value.rules as ApprovalRule[] | undefined; if(e.type==='SUSPICIOUS_TRANSACTION') return 'COMPLIANCE'; if(e.riskScore>=76) return 'FINANCE_DIRECTOR'; return requiredApprovalRole(e.amount,rules); }
+export async function approvalRequirement(e: {amount:number;riskScore:number;type:string}) { const [setting] = await db.select().from(s.settings).where(eq(s.settings.key,'approvalRules')); const rules = setting?.value.rules as ApprovalRule[] | undefined; return resolveApprovalRole(e,rules); }
 export async function requestApproval(exceptionId: string, actor: Actor, requestId: string, note = '') {
   return db.transaction(async tx => { const e=await getException(exceptionId,tx,true); const [existing]=await tx.select().from(s.approvals).where(and(eq(s.approvals.exceptionId,exceptionId),eq(s.approvals.status,'PENDING'))); if(existing) return {id:existing.id,alreadyExists:true}; transition(e.status,'AWAITING_APPROVAL'); const requiredRole=await approvalRequirement(e); const id=`APR-${exceptionId.replace('EXC-','')}-${randomUUID().slice(0,4)}`; await tx.insert(s.approvals).values({id,exceptionId,requestedBy:actor.id,requiredRole,action:'PLACE_ON_HOLD',note}); await tx.update(s.exceptions).set({status:'AWAITING_APPROVAL'}).where(eq(s.exceptions.id,exceptionId)); await tx.insert(s.notifications).values({userId:actor.id,type:'APPROVAL_REQUEST',title:'Approval request created',body:`${id} requires ${ROLE_NAMES[requiredRole]} authorization.`,exceptionId}); await audit({actor:actor.name,actorType:'HUMAN',action:'APPROVAL_REQUESTED',target:exceptionId,tool:'create_approval',inputSummary:note||'Explicit human request to place the invoice on hold.',result:`${id} pending ${ROLE_NAMES[requiredRole]} approval.`,risk:e.riskScore,approval:id,beforeState:{status:e.status},afterState:{status:'AWAITING_APPROVAL'},requestId},tx); return {id,requiredRole,alreadyExists:false}; });
 }
