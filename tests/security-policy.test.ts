@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canApproveRole, demoModeEnabled, matchesCanonicalOrigin, validateRuntimeConfiguration } from '../src/lib/security-policy';
+import { canApproveRole, demoModeEnabled, matchesCanonicalOrigin, resolveApprovalRole, validateRuntimeConfiguration } from '../src/lib/security-policy';
 
 test('demo mode is enabled only for explicit development configuration', () => {
   assert.equal(demoModeEnabled('development', 'true'), true);
@@ -30,4 +30,11 @@ test('approval hierarchy is explicit and compliance remains separate', () => {
   assert.equal(canApproveRole('FINANCE_DIRECTOR', 'COMPLIANCE'), false);
   assert.equal(canApproveRole('COMPLIANCE', 'COMPLIANCE'), true);
   assert.equal(canApproveRole('UNKNOWN', 'AP_CLERK'), false);
+});
+
+test('approval requirements and authority use one configured role policy', () => {
+  assert.equal(resolveApprovalRole({ amount: 500000, riskScore: 10, type: 'PRICE_VARIANCE' }), 'AP_CLERK');
+  assert.equal(resolveApprovalRole({ amount: 500000, riskScore: 80, type: 'PRICE_VARIANCE' }), 'FINANCE_DIRECTOR');
+  assert.equal(resolveApprovalRole({ amount: 500000, riskScore: 10, type: 'SUSPICIOUS_TRANSACTION' }), 'COMPLIANCE');
+  assert.equal(resolveApprovalRole({ amount: 2500000, riskScore: 10, type: 'PRICE_VARIANCE' }, [{ max: 3000000, role: 'AP_MANAGER' }, { max: null, role: 'FINANCE_DIRECTOR' }]), 'AP_MANAGER');
 });
