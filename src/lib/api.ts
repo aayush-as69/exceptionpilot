@@ -71,10 +71,28 @@ function openApi() {
     { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 25 } },
     { name: 'search', in: 'query', schema: { type: 'string', maxLength: 200 } },
   ];
-  const list = (name: string, permission: string): Record<string, unknown> => ({
-    get: {
-      summary: 'List recent ' + name,
-      description: 'Requires an authenticated session and ' + permission + '. Results are bounded and support page, pageSize, and search.',
+  const operation = (
+    verb: string,
+    summary: string,
+    description: string,
+    options: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    [verb]: { summary, description, ...options },
+  });
+  const combine = (...items: Record<string, unknown>[]) => Object.assign({}, ...items);
+  const jsonBody = (required: string[], properties: Record<string, unknown>) => ({
+    required: true,
+    content: {
+      'application/json': {
+        schema: { type: 'object', required, properties },
+      },
+    },
+  });
+  const list = (name: string, permission: string) => operation(
+    'get',
+    'List recent ' + name,
+    'Requires an authenticated session and ' + permission + '. Results are bounded and support page, pageSize, and search.',
+    {
       parameters: collectionParams,
       responses: {
         '200': { description: 'Bounded collection response' },
@@ -82,103 +100,38 @@ function openApi() {
         '403': { description: 'Permission denied' },
       },
     },
-  });
+  );
   const paths: Record<string, unknown> = {
-    '/health': {
-      get: { summary: 'Application and PostgreSQL health', description: 'Checks database connectivity; this is not process-only liveness.', security: [], responses: { '200': { description: 'Healthy' }, '503': { description: 'Database unavailable' } } },
-    },
-    '/ready': {
-      get: { summary: 'Application readiness', description: 'Checks database readiness and may initialize the explicitly enabled development seed.', security: [], responses: { '200': { description: 'Ready' }, '503': { description: 'Not ready' } } },
-    },
-    '/api/health': {
-      get: { summary: 'Application and PostgreSQL health', description: 'Checks database connectivity.', security: [], responses: { '200': { description: 'Healthy' }, '500': { description: 'Database unavailable' } } },
-    },
-    '/api/ready': {
-      get: { summary: 'Application readiness', security: [], responses: { '200': { description: 'Ready' }, '503': { description: 'Not ready' } } },
-    },
-    '/api/openapi': {
-      get: { summary: 'OpenAPI description', security: [], responses: { '200': { description: 'This OpenAPI document' } } },
-    },
-    '/api/auth/login': {
-      post: {
-        summary: 'Create an authenticated session',
-        description: 'Accepts email/password. demoUserId is accepted only when APP_ENV=development and DEMO_MODE=true.',
-        security: [],
-        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { email: { type: 'string', format: 'email' }, password: { type: 'string' }, demoUserId: { type: 'string' } }, additionalProperties: false } } },
-        responses: { '200': { description: 'Eight-hour HTTP-only session created' }, '400': { description: 'Invalid request' }, '401': { description: 'Invalid credentials or demo access disabled' } },
-      },
-    },
-    '/api/auth/logout': {
-      post: { summary: 'Revoke the current session', responses: { '200': { description: 'Signed out' } } },
-    },
-    '/api/auth/me': {
-      get: { summary: 'Read the current authenticated actor', responses: { '200': { description: 'Current actor and demo-mode status' }, '401': { description: 'Authentication required' } } },
-    },
-    '/api/workspace': {
-      get: { summary: 'Read the permission-filtered workspace snapshot', description: 'Requires exception.read. Sensitive datasets and fields are projected according to the current actor.', responses: { '200': { description: 'Workspace snapshot' }, '401': { description: 'Authentication required' }, '403': { description: 'Permission denied' } } },
-    },
-    '/api/tools': {
-      get: { summary: 'List registered deterministic tools', description: 'Requires invoice.read. Tools are descriptive and do not provide autonomous financial execution.', responses: { '200': { description: 'Tool registry' }, '401': { description: 'Authentication required' }, '403': { description: 'Permission denied' } } },
-    },
-    '/api/exceptions/{id}': {
-      get: { summary: 'Read one exception', description: 'Requires exception.read. Record ownership is not yet scoped for multiple tenants.', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Exception record' }, '401': { description: 'Authentication required' }, '404': { description: 'Record not found' } } },
-    },
-    '/api/exceptions/{id}/investigate': {
-      post: { summary: 'Run a deterministic, read-only investigation', description: 'Requires exception.investigate. Evidence is read in a repeatable-read transaction.', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Structured investigation report' }, '403': { description: 'Forbidden' }, '409': { description: 'Invalid state' } } },
-    },
-    '/api/exceptions/{id}/evidence': {
-      get: { summary: 'Export the JSON evidence packet', description: 'Requires audit.export.', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Evidence packet' }, '403': { description: 'Forbidden' } } },
-    },
-    '/api/approvals/{id}/execute': {
-      post: { summary: 'Execute an authorized, single-use human approval decision', description: 'Requires approval.execute. Enforces separation of duties, configured approval authority, compliance gates, and state checks.', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['decision'], properties: { decision: { type: 'string', enum: ['APPROVED', 'REJECTED'] }, note: { type: 'string', maxLength: 2000 } }, additionalProperties: false } } }, responses: { '200': { description: 'Controlled action completed' }, '403': { description: 'Unauthorized' }, '409': { description: 'Replay or state conflict' } } },
-    },
-    '/api/actions': {
-      post: { summary: 'Execute a validated workflow action', description: 'Action-specific permissions apply: approval.create, communication.draft, exception.investigate, exception.read, notification.read, or system.configure. See docs/api.md for action payloads.', responses: { '200': { description: 'Action result' }, '400': { description: 'Validation error' }, '401': { description: 'Authentication required' }, '403': { description: 'Permission denied' }, '409': { description: 'State conflict' } } },
-    },
-    '/api/copilot': {
-      post: { summary: 'Ask the deterministic permission-aware assistant', description: 'Requires exception.read. No external LLM inference or autonomous tool execution is implemented.', requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['question'], properties: { question: { type: 'string', minLength: 3, maxLength: 2000 }, exceptionId: { type: 'string' } }, additionalProperties: false } } }, responses: { '200': { description: 'Answer with stored evidence' }, '403': { description: 'Permission denied' } } },
-    },
-    '/api/tasks/{id}': {
-      patch: { summary: 'Change a task status', description: 'Requires task.manage. The old status is checked in a row-locked transaction.', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['status'], properties: { status: { type: 'string', enum: ['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE', 'CANCELLED'] } } } } }, responses: { '200': { description: 'Task updated' }, '409': { description: 'Concurrent or invalid transition' } } },
-    },
-    '/api/documents/{id}': {
-      patch: { summary: 'Activate a draft document', description: 'Requires document.manage.', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Document activated' }, '409': { description: 'Document is not an activatable draft' } } },
-    },
-    '/api/policies/{id}': {
-      patch: { summary: 'Preview or activate a policy version', description: 'Requires policy.manage. Activation requires explicit confirmation.', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Impact preview or activation result' }, '403': { description: 'Permission denied' } } },
-    },
-    '/api/settings': {
-      patch: { summary: 'Update validated application settings', description: 'Requires system.configure. Before/after state and the change are recorded transactionally.', responses: { '200': { description: 'Setting updated' }, '400': { description: 'Invalid setting payload' }, '403': { description: 'Permission denied' } } },
-    },
-    '/api/users/{id}': {
-      patch: {
-        summary: 'Activate or deactivate a user',
-        description: 'Requires user.manage. Deactivation revokes active sessions.',
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['active'],
-                properties: { active: { type: 'boolean' } },
-              },
-            },
-          },
-        },
-        responses: {
-          '200': { description: 'User status updated' },
-          '403': { description: 'Permission denied' },
-        },
-      },
-    },
-    '/api/playbooks': {
-      post: { summary: 'Create workflow guidance', description: 'Requires system.configure.', responses: { '200': { description: 'Playbook created' }, '403': { description: 'Permission denied' } } },
-    },
-    '/api/cron': {
-      post: { summary: 'Run one bounded monitoring batch', description: 'Requires a Bearer CRON_SECRET token. This is an invocation endpoint, not a durable worker.', security: [{ cronBearer: [] }], responses: { '200': { description: 'Monitoring batch completed' }, '401': { description: 'Invalid cron token' } } },
-    },
+    '/health': operation('get', 'Application and PostgreSQL health', 'Public database connectivity check.', { security: [], responses: { '200': { description: 'Healthy' }, '503': { description: 'Database unavailable' } } }),
+    '/ready': operation('get', 'Application readiness', 'Public readiness check; may initialize the explicitly enabled development seed.', { security: [], responses: { '200': { description: 'Ready' }, '503': { description: 'Not ready' } } }),
+    '/api/health': operation('get', 'Application and PostgreSQL health', 'Public database connectivity check.', { security: [], responses: { '200': { description: 'Healthy' }, '500': { description: 'Database unavailable' } } }),
+    '/api/ready': operation('get', 'Application readiness', 'Public readiness and provider metadata.', { security: [], responses: { '200': { description: 'Ready' }, '503': { description: 'Not ready' } } }),
+    '/api/openapi': operation('get', 'OpenAPI description', 'Returns this API document.', { security: [], responses: { '200': { description: 'This OpenAPI document' } } }),
+    '/api/auth/login': operation('post', 'Create an authenticated session', 'Public password login. demoUserId is accepted only when APP_ENV=development and DEMO_MODE=true.', {
+      security: [],
+      requestBody: jsonBody([], { email: { type: 'string', format: 'email' }, password: { type: 'string' }, demoUserId: { type: 'string' } }),
+      responses: { '200': { description: 'Eight-hour HTTP-only session created' }, '400': { description: 'Invalid request' }, '401': { description: 'Invalid credentials or demo access disabled' } },
+    }),
+    '/api/auth/logout': operation('post', 'Revoke the current session', 'Deletes the current session and cookie.', { responses: { '200': { description: 'Signed out' } } }),
+    '/api/auth/me': operation('get', 'Read the current authenticated actor', 'Requires a valid session.', { responses: { '200': { description: 'Current actor and demo-mode status' }, '401': { description: 'Authentication required' } } }),
+    '/api/workspace': operation('get', 'Read the permission-filtered workspace snapshot', 'Requires exception.read. Sensitive datasets and fields are projected according to the current actor.', { responses: { '200': { description: 'Workspace snapshot' }, '401': { description: 'Authentication required' }, '403': { description: 'Permission denied' } } }),
+    '/api/tools': operation('get', 'List registered deterministic tools', 'Requires invoice.read. Tools are descriptive and do not provide autonomous financial execution.', { responses: { '200': { description: 'Tool registry' }, '403': { description: 'Permission denied' } } }),
+    '/api/exceptions/{id}/investigate': operation('post', 'Run a deterministic, read-only investigation', 'Requires exception.investigate. Evidence is read in a repeatable-read transaction.', { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Structured investigation report' }, '403': { description: 'Forbidden' }, '409': { description: 'Invalid state' } } }),
+    '/api/exceptions/{id}/evidence': operation('get', 'Export the JSON evidence packet', 'Requires audit.export.', { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Evidence packet' }, '403': { description: 'Forbidden' } } }),
+    '/api/approvals/{id}/execute': operation('post', 'Execute an authorized, single-use human approval decision', 'Requires approval.execute. Enforces separation of duties, centralized approval authority, compliance gates, and state checks.', {
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+      requestBody: jsonBody(['decision'], { decision: { type: 'string', enum: ['APPROVED', 'REJECTED'] }, note: { type: 'string', maxLength: 2000 } }),
+      responses: { '200': { description: 'Controlled action completed' }, '403': { description: 'Unauthorized' }, '409': { description: 'Replay or state conflict' } },
+    }),
+    '/api/actions': operation('post', 'Execute a validated workflow action', 'Action-specific permissions apply: approval.create, communication.draft, exception.investigate, exception.read, notification.read, or system.configure. See docs/api.md for action payloads.', { responses: { '200': { description: 'Action result' }, '400': { description: 'Validation error' }, '401': { description: 'Authentication required' }, '403': { description: 'Permission denied' }, '409': { description: 'State conflict' } } }),
+    '/api/copilot': operation('post', 'Ask the deterministic permission-aware assistant', 'Requires exception.read. No external LLM inference or autonomous tool execution is implemented.', { requestBody: jsonBody(['question'], { question: { type: 'string', minLength: 3, maxLength: 2000 }, exceptionId: { type: 'string' } }), responses: { '200': { description: 'Answer with stored evidence' }, '403': { description: 'Permission denied' } } }),
+    '/api/tasks/{id}': operation('patch', 'Change a task status', 'Requires task.manage. The old status is checked in a row-locked transaction.', { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: jsonBody(['status'], { status: { type: 'string', enum: ['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE', 'CANCELLED'] } }), responses: { '200': { description: 'Task updated' }, '409': { description: 'Concurrent or invalid transition' } } }),
+    '/api/documents/{id}': operation('patch', 'Activate a draft document', 'Requires document.manage.', { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Document activated' }, '409': { description: 'Document is not an activatable draft' } } }),
+    '/api/policies/{id}': operation('patch', 'Preview or activate a policy version', 'Requires policy.manage. Activation requires explicit confirmation.', { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Impact preview or activation result' }, '403': { description: 'Permission denied' } } }),
+    '/api/settings': operation('patch', 'Update validated application settings', 'Requires system.configure. Before/after state and the change are recorded transactionally.', { responses: { '200': { description: 'Setting updated' }, '400': { description: 'Invalid setting payload' }, '403': { description: 'Permission denied' } } }),
+    '/api/users/{id}': operation('patch', 'Activate or deactivate a user', 'Requires user.manage. Deactivation revokes active sessions.', { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: jsonBody(['active'], { active: { type: 'boolean' } }), responses: { '200': { description: 'User status updated' }, '403': { description: 'Permission denied' } } }),
+    '/api/playbooks': operation('post', 'Create workflow guidance', 'Requires system.configure.', { responses: { '200': { description: 'Playbook created' }, '403': { description: 'Permission denied' } } }),
+    '/api/cron': operation('post', 'Run one bounded monitoring batch', 'Requires a Bearer CRON_SECRET token. This is an invocation endpoint, not a durable worker.', { security: [{ cronBearer: [] }], responses: { '200': { description: 'Monitoring batch completed' }, '401': { description: 'Invalid cron token' } } }),
   };
   const collections: Record<string, string> = {
     invoices: 'invoice.read',
@@ -201,21 +154,15 @@ function openApi() {
     if (name !== 'analytics') {
       const detailPath = '/api/' + name + '/{id}';
       const detailOperations = (paths[detailPath] as Record<string, unknown> | undefined) ?? {};
-      detailOperations.get = {
-        summary: 'Read one recent ' + name + ' record',
-        description: 'Requires an authenticated session and ' + permission + '. The record is selected from the bounded workspace snapshot.',
+      detailOperations.get = operation('get', 'Read one recent ' + name + ' record', 'Requires an authenticated session and ' + permission + '. The record is selected from the bounded workspace snapshot.', {
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         responses: { '200': { description: 'Record' }, '401': { description: 'Authentication required' }, '403': { description: 'Permission denied' }, '404': { description: 'Record not found in the current snapshot' } },
-      };
+      }).get;
       paths[detailPath] = detailOperations;
     }
   }
-  const tasksPath = list('tasks', 'task.manage');
-  tasksPath.post = { summary: 'Create an internal task', description: 'Requires task.manage.', responses: { '200': { description: 'Task created' }, '403': { description: 'Permission denied' } } };
-  paths['/api/tasks'] = tasksPath;
-  const documentsPath = list('documents', 'document.read');
-  documentsPath.post = { summary: 'Upload a validated TXT, CSV, or JSON document', description: 'Requires document.manage. Maximum upload size is 256 KB; uploads start as drafts.', responses: { '200': { description: 'Draft document indexed' }, '413': { description: 'Upload too large' }, '415': { description: 'Unsupported file type' } } };
-  paths['/api/documents'] = documentsPath;
+  paths['/api/tasks'] = combine(paths['/api/tasks'] as Record<string, unknown> ?? {}, operation('post', 'Create an internal task', 'Requires task.manage.', { responses: { '200': { description: 'Task created' }, '403': { description: 'Permission denied' } } }));
+  paths['/api/documents'] = combine(paths['/api/documents'] as Record<string, unknown> ?? {}, operation('post', 'Upload a validated TXT, CSV, or JSON document', 'Requires document.manage. Maximum upload size is 256 KB; uploads start as drafts.', { responses: { '200': { description: 'Draft document indexed' }, '413': { description: 'Upload too large' }, '415': { description: 'Unsupported file type' } } }));
   return {
     openapi: '3.0.3',
     info: {
