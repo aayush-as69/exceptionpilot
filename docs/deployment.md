@@ -3,14 +3,7 @@
 ## Local development
 
 1. Copy `.env.example` to `.env`.
-2. Keep the explicit local values:
-
-```text
-APP_ENV=development
-DEMO_MODE=true
-SEED_ON_START=true
-APP_ORIGIN=http://localhost:3000
-```
+2. Keep the safe local defaults for a non-demo run. To intentionally use the seeded demo workspace, change `DEMO_MODE=true` and `SEED_ON_START=true` while keeping `APP_ENV=development`. The example defaults leave demo access and automatic seeding disabled.
 
 3. Start the local database and application:
 
