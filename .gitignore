@@ -9,3 +9,4 @@ coverage/
 public/*.zip
 *.log
 .DS_Store
+next-env.d.ts
