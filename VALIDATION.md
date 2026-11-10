@@ -1,41 +1,60 @@
-# Validation record — Option B
+# Validation
 
-## Checks actually performed
+> A factual record of checks performed against the current ExceptionPilot build.
 
-| Check | Result |
-|---|---|
-| `npx next typegen` | PASS — route types generated |
-| `npm exec tsc -- --noEmit --pretty false` | PASS — no TypeScript errors |
-| `npm run build` | PASS — Next.js 16.4.6 production build |
-| Managed `build_and_start` | PASS — production server started and `/api/health` passed |
-| `GET /` | HTTP 200 |
-| `GET /ready` | HTTP 200 |
-| `GET /workspace/exceptions` | HTTP 200 |
-| `GET /workspace/settings` | HTTP 200 |
-| `GET /api/openapi` | HTTP 200 |
-| `npm audit --omit=dev` | 0 runtime advisories |
-| Full dependency audit | 15 development-tool advisories remained (13 moderate, 2 high); not represented as a clean full audit |
-| Docker build/runtime | NOT RUN — Docker CLI unavailable in this sandbox |
-| Cloud deployment | NOT RUN — no claim made |
-| Automated test suite | NOT ADDED OR RUN, per final request |
-| RAG evaluation | NOT RUN — no metrics fabricated |
+## Validation summary
 
-The required type-generation, TypeScript, and production-build commands were run from the project root with pipefail and logged to /tmp/next-typegen.log, /tmp/tsc.log, and /tmp/build.log. Those temporary logs are not included in the source archive.
+| Area | Result | Meaning |
+|---|---|---|
+| Route type generation | ✅ PASS | Next.js route types generated |
+| TypeScript | ✅ PASS | No TypeScript errors |
+| Production build | ✅ PASS | Next.js 16.4.6 build completed |
+| Managed startup | ✅ PASS | Production server started and health endpoint responded |
+| Core routes | ✅ PASS | Workspace and health routes returned HTTP 200 |
+| OpenAPI | ✅ PASS | /api/openapi returned HTTP 200 |
+| Runtime dependency audit | ✅ PASS | 0 runtime advisories |
+| Full dependency audit | ⚠️ REVIEW | 15 development-tool advisories remained |
+| Docker runtime | ⏭️ NOT RUN | Docker CLI was unavailable in the validation environment |
+| Cloud deployment | ⏭️ NOT RUN | No cloud deployment was claimed |
+| Automated test suite | ⏭️ NOT RUN | No automated suite was added |
+| RAG evaluation | ⏭️ NOT RUN | No labeled benchmark was available |
 
-## Live PostgreSQL snapshot at validation
+## Runtime snapshot
 
-- 24 open exceptions; 2 critical by the actual deterministic scores.
-- ₹18,40,000 open financial exposure (184000000 integer paise).
-- 7 pending approvals; 2 cases within the two-hour SLA warning window; 15 breached deadlines.
-- 12 resolved historical exceptions; 6.5-hour average seeded resolution time.
-- 36 exceptions, 39 invoices, and 8 vendors in the bounded snapshot.
+The validation environment contained:
 
-These are measured demo values, not a claim that every illustrative number in the original specification was reproduced. No metric was hardcoded to make the dashboard appear populated.
+- 24 open exceptions
+- 2 critical exceptions by deterministic score
+- ₹18,40,000 open financial exposure
+- 7 pending approvals
+- 2 cases within the two-hour SLA warning window
+- 15 breached deadlines
+- 12 resolved historical exceptions
+- 6.5-hour average seeded resolution time
+- 36 exceptions, 39 invoices, and 8 vendors in the bounded snapshot
+
+These are measured demo values from the seeded workspace. They are not hardcoded product claims.
+
+## What validation proves
+
+The recorded checks establish that the application can:
+
+1. generate its Next.js route types;
+2. compile TypeScript;
+3. produce a production build;
+4. start successfully in the managed validation environment;
+5. serve the documented health/readiness and core workspace routes;
+6. expose the OpenAPI document;
+7. pass the recorded runtime dependency audit.
+
+They do **not** establish production security, financial correctness under all edge cases, accessibility compliance, performance at scale, or the quality of an external AI/RAG system.
 
 ## Archive verification
 
-`python3 scripts/package.py` uses an explicit source allowlist, excludes .env and generated/dependency directories, verifies every ZIP member's CRC, and rejects secret environment files. Regenerate the archive after changing source or documentation. The downloadable artifact is public/exceptionpilot-option-b.zip.
+`scripts/package.py` uses an explicit source allowlist, excludes secrets and generated/dependency directories, verifies ZIP member CRCs, and rejects environment files.
 
-## Scope reminder
+Regenerate the archive after source or documentation changes.
 
-Passing compilation and startup checks is not a security certification or a substitute for the comprehensive original test requirements. See docs/testing.md, docs/evaluation.md, and docs/features.md for explicit omissions and known limitations.
+## Validation principle
+
+ExceptionPilot reports what was actually checked. It does not convert missing evidence into a passing result.
