@@ -28,8 +28,10 @@ export async function investigate(exceptionId: string, actor: Actor, requestId: 
     if (!vendor) throw new ApiError(409, 'The source vendor is missing. Investigation blocked.');
     const [po] = invoice.poId ? await tx.select().from(s.purchaseOrders).where(eq(s.purchaseOrders.id, invoice.poId)).for('update') : [];
     const [grn] = invoice.poId ? await tx.select().from(s.goodsReceipts).where(eq(s.goodsReceipts.poId, invoice.poId)).for('update') : [];
-    const [policy] = await tx.select().from(s.policies).where(eq(s.policies.id, 'pol-1')).for('update');
-    const tolerance = policy?.status === 'ACTIVE' && (!policy.expiresAt || policy.expiresAt > new Date()) ? policy.tolerancePercent : 0;
+    const policyId = applicablePolicy(exception.type);
+    const [policy] = await tx.select().from(s.policies).where(eq(s.policies.id, policyId)).for('update');
+    const now = new Date();
+    const tolerance = policy?.status === 'ACTIVE' && policy.effectiveDate <= now && (!policy.expiresAt || policy.expiresAt > now) ? policy.tolerancePercent : 0;
     const match = matchRecords(po ?? null, grn ?? null, invoice, tolerance);
 
     const history = await tx.select().from(s.invoices)
@@ -43,7 +45,7 @@ export async function investigate(exceptionId: string, actor: Actor, requestId: 
       .where(and(eq(s.exceptions.vendorId, exception.vendorId), eq(s.exceptions.type, exception.type), ne(s.exceptions.id, exception.id)))
       .limit(100);
     const [riskSetting] = await tx.select().from(s.settings).where(eq(s.settings.key, 'riskRules'));
-    const evidence = await searchEvidence(exception.title, undefined, applicablePolicy(exception.type), tx);
+    const evidence = await searchEvidence(exception.title, undefined, policyId, tx);
     const risk = riskAssessment({
       duplicate: duplicates.length > 0,
       variance: match.outsideTolerance,
