@@ -1,38 +1,52 @@
-# Testing status
+# Testing
 
-The current repository does not include a comprehensive automated test suite.
+## Local checks
 
-That is an explicit project status, not a hidden omission.
+Install the exact dependency graph and run the repository checks:
 
-## Checks currently recorded
+```bash
+npm ci
+npm test
+npx next typegen
+npm run lint
+npm run typecheck
+npm run build
+```
 
-See [VALIDATION.md](../VALIDATION.md) for the exact validation record.
+The security-policy regression suite uses Node's built-in test runner and covers:
+- demo-mode fail-closed behavior;
+- required production environment variables;
+- canonical HTTPS origin validation;
+- separation between finance and compliance approval authority;
+- configurable approval thresholds.
 
-The documented checks cover:
+## Continuous integration
 
-- Next.js route type generation
-- TypeScript compilation
-- production build
-- managed startup
-- health/readiness
-- core workspace routes
-- OpenAPI endpoint
-- dependency audit
+The GitHub Actions workflow runs:
 
-## What is not covered
+1. `npm ci` with the committed lockfile;
+2. a separate `npm audit --audit-level=high` dependency audit;
+3. the automated regression tests;
+4. Next.js route type generation;
+5. ESLint;
+6. TypeScript checking;
+7. a production build.
 
-There is currently no comprehensive automated coverage for financial edge cases, workflow transitions, authorization matrices, API integration behavior, upload security, accessibility, RAG retrieval quality, agent behavior, concurrency, Docker runtime, or cloud deployment.
+Dependency audit output must be reviewed before changing dependency versions or enabling automated dependency updates. Do not use `npm audit fix` as an unattended remediation step.
 
-## Recommended next step
+## Coverage still required
 
-Add tests in layers:
+The current automated suite is not a full security or product test suite. Add and independently verify:
+- authenticated and unauthenticated API route tests;
+- role-by-role API payload projection tests for every workspace dataset;
+- task and approval concurrency integration tests against PostgreSQL;
+- before/after audit transaction tests;
+- browser tests for keyboard access, dialogs, responsive breakpoints, and real login flows;
+- production deployment smoke tests through the configured reverse proxy;
+- upload malware-scanning tests;
+- database backup and restore tests;
+- retrieval relevance and citation-quality benchmarks.
 
-1. **Unit** — financial math, risk rules, state transitions.
-2. **Integration** — database constraints, workflow transactions, permissions.
-3. **API** — authentication, validation, status codes, idempotency.
-4. **Security** — authorization matrix, upload abuse, session behavior.
-5. **Retrieval** — labeled evidence recall and citation correctness.
-6. **End-to-end** — investigation → approval → hold → audit.
-7. **Deployment** — container startup, readiness, migration, restore.
+## Evidence
 
-Until those exist, describe the project as a validated functional demo rather than a fully tested production system.
+Only record checks that actually ran. Include the commit SHA, date, command, environment, and result for each validation. A green build does not prove production security, database restore capability, browser accessibility, cloud deployment, or retrieval quality.
