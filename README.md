@@ -132,21 +132,19 @@ Every sensitive mutation is authorized on the backend. Investigation and simulat
 
 ExceptionPilot deliberately does **not** pretend to use an external LLM.
 
-The current provider is:
-
-**`mock / deterministic-rules-v1`**
+The default provider remains deterministic for offline/demo operation, but the repository now supports an **optional grounded semantic-RAG provider** using Gemini or OpenAI. Configure `AI_PROVIDER` and the corresponding API key to enable it.
 
 It reads real application records and stored policy evidence, performs deterministic checks, and returns structured findings.
 
 It does **not**:
 
-- call OpenAI or Gemini;
+- call OpenAI or Gemini unless explicitly configured;
 - generate fake citations;
 - store hidden chain-of-thought;
 - execute financial actions;
 - claim calibrated model confidence.
 
-The copilot is permission-aware and evidence-driven. External LLM adapters and autonomous tool orchestration are future work.
+The copilot is permission-aware and evidence-driven. The external provider is restricted to grounded generation over retrieved evidence; autonomous financial actions remain disabled.
 
 See [AI architecture](docs/ai-agent.md).
 
@@ -173,9 +171,9 @@ Policy sources
       Stored source excerpt
 ```
 
-This is **hybrid keyword/lexical retrieval**, not embedding-based semantic RAG.
+This is now **semantic vector RAG with a lexical fallback**. Active policy chunks can be embedded into PostgreSQL `pgvector`, retrieved by cosine similarity, and supplied to an optional grounded Gemini/OpenAI generation step.
 
-No Recall@5, precision, grounding, or hallucination metric is claimed without a labeled evaluation run.
+The system reports a versioned calibrated retrieval-grounding confidence score, but this is not a probability of truth and should be re-calibrated against a project-specific labeled evaluation set before production use.
 
 See [retrieval](docs/rag.md) and [evaluation](docs/evaluation.md).
 
@@ -287,7 +285,7 @@ When demo mode is explicitly enabled, the development seed is initialized automa
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000`.\n\nFor semantic RAG, use `AI_PROVIDER=gemini` or `AI_PROVIDER=openai` and run the embedding index command after migrations. Without provider configuration, the application safely falls back to transparent lexical retrieval.
 
 ---
 
