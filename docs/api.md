@@ -1,6 +1,6 @@
 # API
 
-The API is a single-tenant, authenticated workspace interface. Application handlers are dispatched through `src/lib/api.ts`; the generated OpenAPI document should be checked against that dispatcher when routes change.
+The API is a single-tenant, authenticated workspace interface. Application handlers are dispatched through `src/lib/api.ts`; the generated OpenAPI document is maintained alongside the dispatcher and includes implemented list, detail, authentication, and mutation routes. Detailed action payloads and permission requirements are described below.
 
 ## Health and readiness
 
