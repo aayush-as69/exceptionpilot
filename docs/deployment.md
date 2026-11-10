@@ -2,57 +2,45 @@
 
 ## Local development
 
-```bash
-npm ci
-npx tsx scripts/migrate.ts
-npx tsx scripts/seed.ts
-npm run dev
-```
-
-## Docker
-
-The repository includes a multi-stage Dockerfile and a development-oriented Compose setup.
+1. Copy `.env.example` to `.env`.
+2. Keep the explicit local values `APP_ENV=development`, `DEMO_MODE=true`, and `SEED_ON_START=true`.
+3. Start the database and application:
 
 ```bash
 docker compose up --build
 ```
 
-Compose starts PostgreSQL, runs the migration service, then starts the standalone Next.js server.
-
-Docker execution is only claimed when recorded in [VALIDATION.md](../VALIDATION.md).
+For a non-Docker workflow, install dependencies with `npm ci`, run migrations with `npx tsx scripts/migrate.ts`, seed with `npx tsx scripts/seed.ts`, then run `npm run dev`.
 
 ## Production baseline
 
-Use:
+Do not use the development Compose defaults for an internet-facing service. Configure all of the following explicitly:
 
 ```text
 APP_ENV=production
 DEMO_MODE=false
 SEED_ON_START=false
+POSTGRES_PASSWORD=<strong unique secret>
+CRON_SECRET=<at least 24 characters of random secret>
+APP_ORIGIN=https://your-canonical-host.example
 ```
 
-Also configure strong database credentials, HTTPS/TLS, a trusted reverse proxy, controlled administrator provisioning, backups, restore testing, dependency monitoring, and application monitoring.
-
-Provision an administrator with:
+The application rejects incomplete or contradictory application-mode configuration. Provision an administrator through the controlled provisioning script:
 
 ```bash
 npx tsx scripts/provision-admin.ts
 ```
 
+Terminate TLS at a trusted reverse proxy. The proxy must overwrite forwarded headers, enforce request-body limits, apply distributed rate limiting, log access, and keep PostgreSQL private. Do not rely on the process-local development limiter for production protection.
+
+## Docker Compose
+
+Compose is intended for local development. It binds the web port to loopback and requires an explicit database password and explicit application mode. Review and replace all secrets before use.
+
 ## Scheduled monitoring
 
-If continuous monitoring is required:
-
-`POST /api/cron`
-
-Use a strong `CRON_SECRET` and send it as a bearer token.
-
-## Reverse proxy
-
-The production proxy should terminate TLS, overwrite forwarded headers, enforce request-body limits, apply rate limiting, provide access logging, and avoid exposing internal services directly.
+The `POST /api/cron` endpoint runs monitoring when invoked with a strong `CRON_SECRET` bearer token. The repository does not include a durable scheduler or distributed worker; configure an external scheduler and understand that each invocation processes a bounded batch.
 
 ## Database operations
 
-Run backups and rehearse restoration before real financial data is introduced.
-
-The application does not ship cloud credentials and does not claim a cloud deployment.
+Back up PostgreSQL and rehearse restoration before introducing real financial data. Production deployment, database restore, monitoring, and proxy behavior require environment-specific verification and are not claimed by this repository.
