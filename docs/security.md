@@ -47,7 +47,7 @@ Production startup rejects demo mode, automatic demo seeding, missing database c
 
 ## Audit and workflow state
 
-Audit events are append-only at the PostgreSQL trigger layer. Settings updates now capture the previous value before mutation and write the change and audit event in the same transaction. Task transitions lock the task row and verify its old state before applying the update.
+Audit events are append-only at the PostgreSQL trigger layer. Settings updates now capture the previous value before mutation and write the change and audit event in the same transaction. Task transitions lock the task row and verify its old state before applying the update. Investigations lock the exception and relevant financial source rows, then read evidence and persist the report within a repeatable-read transaction.
 
 Approving a hold resolves the immediate exception workflow while leaving the invoice in `ON_HOLD`. An exception marked `RESOLVED` must not be interpreted as the invoice being cleared for payment; procurement follow-up and any later clearance remain separate business steps.
 
