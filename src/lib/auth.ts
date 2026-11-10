@@ -22,8 +22,21 @@ export function assertRuntimeConfiguration() {
   if (appEnv === 'production' && demo !== 'false') {
     throw new Error('DEMO_MODE must be false in production.');
   }
-  if (appEnv === 'production' && process.env.SEED_ON_START === 'true') {
-    throw new Error('SEED_ON_START must not be true in production.');
+  if (appEnv === 'production' && process.env.SEED_ON_START !== 'false') {
+    throw new Error('SEED_ON_START must be explicitly false in production.');
+  }
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL must be configured.');
+  }
+  if (appEnv === 'production') {
+    const configuredOrigin = process.env.APP_ORIGIN;
+    if (!configuredOrigin) throw new Error('APP_ORIGIN must be configured in production.');
+    try {
+      const parsed = new URL(configuredOrigin);
+      if (parsed.protocol !== 'https:' || parsed.origin !== configuredOrigin) throw new Error();
+    } catch {
+      throw new Error('APP_ORIGIN must be a canonical HTTPS origin without a path or trailing slash.');
+    }
   }
 }
 
@@ -51,7 +64,6 @@ export async function destroySession() { const jar = await cookies(); const toke
 // enforce limits at a trusted distributed gateway until a shared store is configured.
 const attempts = new Map<string, { count: number; reset: number }>();
 export function rateLimit(key: string, max = 10, windowMs = 60000) {
-  if (process.env.APP_ENV === 'production') return;
   const now = Date.now();
   if (attempts.size > 5000) for (const [k, v] of attempts) if (v.reset < now) attempts.delete(k);
   const entry = attempts.get(key);
