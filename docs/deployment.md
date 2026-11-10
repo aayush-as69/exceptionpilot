@@ -25,9 +25,10 @@ DATABASE_URL=<production database URL>
 POSTGRES_PASSWORD=<strong unique secret>
 CRON_SECRET=<at least 24 characters of random secret>
 APP_ORIGIN=https://your-canonical-host.example
+RATE_LIMITING_MODE=gateway
 ```
 
-Startup validation rejects missing application mode, demo mode enabled in production, automatic startup seeding, missing database configuration, and missing or invalid canonical HTTPS origin.
+Startup validation rejects missing application mode, demo mode enabled in production, automatic startup seeding, missing database configuration, missing or invalid canonical HTTPS origin, a missing/short production cron secret, and production without `RATE_LIMITING_MODE=gateway`.
 
 Provision an administrator using the controlled script:
 
@@ -41,7 +42,7 @@ Do not reuse seeded demo credentials. Keep PostgreSQL private and rotate every d
 
 Terminate TLS at a trusted reverse proxy. The proxy must overwrite forwarded headers, enforce request-body limits, apply distributed rate limiting, log access, and avoid exposing internal services directly. Configure `APP_ORIGIN` to the exact public origin, without a path or trailing slash. The application does not trust `x-forwarded-host` for origin validation.
 
-The in-process rate limiter is only a best-effort secondary control. It is not distributed and is not sufficient as the production rate-limit boundary.
+Production startup requires `RATE_LIMITING_MODE=gateway` as an explicit deployment contract. This setting does not install or verify a gateway: the operator must actually configure a trusted edge/proxy to enforce shared distributed limits before routing public traffic. The in-process rate limiter remains only a best-effort secondary control and is not sufficient as the production rate-limit boundary.
 
 ## Docker Compose
 
