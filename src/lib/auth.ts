@@ -5,9 +5,8 @@ import { and, eq, gt } from 'drizzle-orm';
 import { db } from '@/db';
 import { roles, sessions, users } from '@/db/schema';
 import type { Actor } from './domain';
-const scrypt = promisify(scryptCallback);
-
 import { demoModeEnabled, validateRuntimeConfiguration } from './security-policy';
+const scrypt = promisify(scryptCallback);
 
 // Demo access is opt-in and available only in an explicitly configured development environment.
 export const demoEnabled = () => demoModeEnabled(process.env.APP_ENV, process.env.DEMO_MODE);
@@ -33,8 +32,8 @@ export async function requireActor(permission?: string) { const actor = await cu
 export async function createSession(userId: string, secure: boolean) { const token = randomBytes(32).toString('hex'); const expiresAt = new Date(Date.now() + 8 * 3600000); await db.insert(sessions).values({ tokenHash: digest(token), userId, expiresAt }); (await cookies()).set('ep_session', token, { httpOnly: true, secure, sameSite: 'lax', path: '/', expires: expiresAt }); }
 export async function destroySession() { const jar = await cookies(); const token = jar.get('ep_session')?.value; if (token) await db.delete(sessions).where(eq(sessions.tokenHash, digest(token))); jar.delete('ep_session'); }
 
-// Process-local throttling is retained only as a development fallback. Production must
-// enforce limits at a trusted distributed gateway until a shared store is configured.
+// This process-local limiter is best-effort only. Production must also enforce
+// distributed throttling at a trusted gateway or shared store.
 const attempts = new Map<string, { count: number; reset: number }>();
 export function rateLimit(key: string, max = 10, windowMs = 60000) {
   const now = Date.now();
