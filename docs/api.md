@@ -1,7 +1,57 @@
 # API
 
-Machine-readable specification: GET /api/openapi. UI browser: /workspace/api-docs. Authentication: POST /api/auth/login with email/password, or demoUserId only in demo mode; POST /api/auth/logout; GET /api/auth/me. Core GET collections: invoices, exceptions, vendors, purchase-orders, goods-receipts, approvals, tasks, policies, documents, audit, notifications, analytics, users, agents. Collections support page, pageSize (max 100), search over a bounded recent snapshot. GET /api/workspace returns the permission-filtered UI snapshot.
+The API is designed around authenticated workspace operations rather than an unrestricted public API.
 
-POST /api/exceptions/:id/investigate runs a read-only/deterministic investigation. GET /api/exceptions/:id/evidence requires audit.export. POST /api/approvals/:id/execute accepts decision APPROVED or REJECTED and note. POST /api/actions is a Zod discriminated union: request-approval, draft-communication, escalate, simulate, assign-me, feedback, read-notifications, monitor. Each action has its own required fields and backend permission; see src/lib/api.ts. POST /api/tasks creates tasks; PATCH /api/tasks/:id changes status. POST /api/documents accepts multipart file/category; PATCH /api/documents/:id activates a draft. PATCH /api/policies/:id previews or explicitly activates a version. PATCH /api/settings and /api/users/:id require administration. POST /api/playbooks creates guidance. POST /api/copilot accepts question and optional exceptionId. POST /api/cron requires Bearer CRON_SECRET.
+## Discovery
 
-Errors use 400/401/403/404/409/413/429/500 with a request ID. No failed mutation is reported as successful. GET /health, /ready, and /api/health expose health/readiness. Cookie sessions are used; cross-origin browser mutations are rejected. This is a demo API, not a public multi-tenant API contract.
+- `GET /api/openapi` — machine-readable OpenAPI 3.0 document
+- `/workspace/api-docs` — interactive API browser
+- `GET /health` — lightweight liveness
+- `GET /ready` — readiness and database checks
+- `GET /api/health` — application health
+
+## Authentication
+
+- `POST /api/auth/login` — email/password login
+- `POST /api/auth/logout` — end session
+- `GET /api/auth/me` — current session
+- `demoUserId` is accepted only when demo mode is enabled
+
+## Core reads
+
+Collection endpoints cover invoices, exceptions, vendors, purchase-orders, goods-receipts, approvals, tasks, policies, documents, audit, notifications, analytics, users, and agents.
+
+Collections support bounded pagination and search over a recent snapshot.
+
+## Sensitive operations
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/exceptions/:id/investigate` | Run a read-only investigation |
+| `GET /api/exceptions/:id/evidence` | Export investigation evidence |
+| `POST /api/approvals/:id/execute` | Approve or reject a pending request |
+| `POST /api/actions` | Execute a validated workflow action |
+| `POST /api/tasks` | Create a task |
+| `PATCH /api/tasks/:id` | Change task status |
+| `POST /api/documents` | Upload a validated document |
+| `PATCH /api/documents/:id` | Activate a draft document |
+| `PATCH /api/policies/:id` | Preview or activate a policy version |
+| `PATCH /api/settings` | Update administration settings |
+| `PATCH /api/users/:id` | Update user configuration |
+| `POST /api/playbooks` | Create workflow guidance |
+| `POST /api/copilot` | Ask the permission-aware copilot |
+| `POST /api/cron` | Run authenticated monitoring |
+
+## Errors
+
+Expected API errors include 400, 401, 403, 404, 409, 413, 429, and 500.
+
+Responses include a request ID where supported.
+
+A failed mutation is never reported as successful.
+
+## Security boundary
+
+The API is a demo workspace API, not a public multi-tenant contract.
+
+Permissions are checked on the server, and browser mutations are protected by origin validation.
