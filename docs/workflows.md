@@ -10,7 +10,7 @@ ExceptionPilot treats investigation, approval, execution, and audit as separate 
 4. Retrieve applicable policy evidence.
 5. Produce a structured investigation report.
 
-Investigation is read-only. Re-running it does not regress approval or escalation state.
+The investigation locks the exception and related financial source rows, then reads evidence and records the report in a repeatable-read transaction. Concurrent source changes cannot silently mix different versions of evidence into one report. Investigation is read-only with respect to financial state; re-running it does not regress approval or escalation state.
 
 ## Approval
 
@@ -25,7 +25,7 @@ Before execution, the backend checks:
 - compliance requirements
 - current exception/approval state
 
-The decision is then executed transactionally.
+The decision is then executed transactionally. Approval requirement calculation and actor authority checks use the same centralized policy module, including a separate compliance authority.
 
 ## Approval outcomes
 
@@ -51,7 +51,7 @@ Simulation previews a sensitive workflow without mutating financial state.
 
 ## Tasks
 
-Tasks use validated state transitions and are linked to the originating workflow where applicable.
+Tasks use validated state transitions, lock the task row, and apply a conditional old-status update inside the transaction. Competing transitions cannot silently overwrite each other. Tasks are linked to the originating workflow where applicable.
 
 ## Monitoring
 
