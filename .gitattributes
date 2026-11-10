@@ -1,0 +1,14 @@
+# GitHub Linguist language detection
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+*.js linguist-language=JavaScript
+*.jsx linguist-language=JavaScript
+*.css linguist-language=CSS
+*.scss linguist-language=SCSS
+*.sql linguist-language=SQL
+*.html linguist-language=HTML
+
+# Keep generated/vendor assets out of the language breakdown.
+node_modules/ linguist-vendored
+.next/ linguist-generated
+coverage/ linguist-generated
