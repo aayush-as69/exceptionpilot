@@ -25,7 +25,7 @@ Historical seeded workspace snapshot: 24 open exceptions, 2 critical exceptions 
 
 | Commit | Date | Check | Result |
 |---|---|---|---|
-| `737827ee3b6e619c5ed6f53fae3f1bad072ca0ef` | 2026-11-10 18:41:40–18:42:43 UTC | `npm ci --no-audit --no-fund`; `npm audit --audit-level=high`; `npm test`; `npx next typegen`; `npm run lint`; `npm run typecheck`; `npm run build` | PASS — GitHub Actions [run 42877773354](https://github.com/aayush-as69/exceptionpilot/actions/runs/42877773354); 5/5 tests passed. Audit gate exited 0; report contained 12 moderate development-tool advisories. |
+| `a495257aa32b6e07f4b25f668385720dbcbc3d50` | 2026-11-10 18:44:58–18:45:xx UTC | `npm ci --no-audit --no-fund`; `npm audit --audit-level=high`; `npm test`; `npx next typegen`; `npm run lint`; `npm run typecheck`; `npm run build` | PASS — GitHub Actions [run 42878321701](https://github.com/aayush-as69/exceptionpilot/actions/runs/42878321701); 5/5 tests passed. Audit gate exited 0; report contained 12 moderate development-tool advisories. |
 
 The security-policy regression tests cover explicit demo configuration, production environment validation, canonical-origin matching, finance/compliance authority separation, and configurable approval thresholds. CI checks ran on GitHub Actions with Node.js 22 and npm 10.9.9. The dependency audit gate passed at the configured high-severity threshold, but its output contained 12 moderate advisories in development-tool dependency trees; review these before dependency updates. No forced breaking dependency downgrade was applied.
 
