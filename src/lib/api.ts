@@ -5,6 +5,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import * as s from '@/db/schema';
 import { ApiError, assertRuntimeConfiguration, currentActor, demoEnabled, destroySession, createSession, rateLimit, requireActor, verifyPassword } from './auth';
+import { matchesCanonicalOrigin } from './security-policy';
 import { seedIfEnabled } from './seed';
 import { getWorkspace } from './workspace';
 import { can, OPEN_STATES, TOOL_REGISTRY } from './domain';
@@ -27,10 +28,10 @@ const actionSchema=z.discriminatedUnion('action',[
 const permissions:Record<string,string>={'request-approval':'approval.create','draft-communication':'communication.draft',escalate:'exception.investigate',simulate:'exception.read','assign-me':'exception.investigate',feedback:'exception.read','read-notifications':'notification.read',monitor:'system.configure'};
 const taskSchema=z.object({title:z.string().min(3).max(200),description:z.string().max(4000).default(''),assignee:idSchema,priority:z.enum(['LOW','MEDIUM','HIGH','CRITICAL']),dueAt:z.string().datetime(),exceptionId:idSchema.optional()});
 function json(data:unknown,requestId:string,status=200){return NextResponse.json(data,{status,headers:{'Cache-Control':'no-store','X-Request-Id':requestId,'X-Trace-Id':requestId}});}
-function originCheck(req:NextRequest){const origin=req.headers.get('origin');if(!origin)return;let received:string;try{received=new URL(origin).origin;}catch{throw new ApiError(403,'Invalid request origin.');}const expected=process.env.APP_ENV==='production'?process.env.APP_ORIGIN:req.nextUrl.origin;if(!expected||received!==expected)throw new ApiError(403,'Cross-origin mutations are not allowed.');}
+function originCheck(req:NextRequest,allowMissing=false){const origin=req.headers.get('origin');if(!origin){if(process.env.APP_ENV==='production'&&!allowMissing)throw new ApiError(403,'Origin header required.');return;}const expected=process.env.APP_ENV==='production'?process.env.APP_ORIGIN:req.nextUrl.origin;if(!expected||!matchesCanonicalOrigin(origin,expected))throw new ApiError(403,'Cross-origin mutations are not allowed.');}
 async function body(req:NextRequest){const reader=req.body?.getReader();if(!reader)throw new ApiError(400,'A JSON request body is required.');const chunks:Uint8Array[]=[];let size=0;while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>65536){await reader.cancel();throw new ApiError(413,'JSON request body exceeds 64 KB.');}chunks.push(value);}try{return JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new ApiError(400,'Request body must be valid JSON.');}}
 export async function handleApi(req:NextRequest,path:string[]){const requestId=randomUUID();try{
-  assertRuntimeConfiguration();await seedIfEnabled();const method=req.method;const ip=req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()??'local';rateLimit(`${ip}:${path[0]==='auth'?'auth':'api'}`,path[0]==='auth'?12:180);if(!['GET','HEAD'].includes(method))originCheck(req);
+  assertRuntimeConfiguration();await seedIfEnabled();const method=req.method;const ip=req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()??'local';rateLimit(`${ip}:${path[0]==='auth'?'auth':'api'}`,path[0]==='auth'?12:180);if(!['GET','HEAD'].includes(method))originCheck(req,path[0]==='cron');
   if(path[0]==='cron'&&method==='POST'){const secret=process.env.CRON_SECRET;const supplied=req.headers.get('authorization')??'';const hash=(value:string)=>createHash('sha256').update(value).digest();if(!secret||secret.length<24||!timingSafeEqual(hash(supplied),hash(`Bearer ${secret}`)))throw new ApiError(401,'Scheduler authorization required.');return json(await runMonitoring({id:'system-monitor',name:'Scheduled monitor',email:'',roleId:'SYSTEM',initials:'SM',permissions:['system.configure']},requestId),requestId);}
   if(path[0]==='auth'){
     if(path[1]==='login'&&method==='POST'){const input=z.object({email:z.string().email().max(254).optional(),password:z.string().min(1).max(200).optional(),demoUserId:idSchema.optional()}).parse(await body(req));let user;
