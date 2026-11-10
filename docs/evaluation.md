@@ -1,5 +1,9 @@
 # Evaluation status
 
+## Semantic RAG calibration
+
+Semantic retrieval and grounded generation are implemented behind explicit provider configuration. The application computes a versioned retrieval-grounding confidence signal from similarity, result margin, evidence count, lexical agreement, and citation coverage. The current profile is a baseline calibration profile, not a claim of production-grade probability calibration.\n\nA production evaluation must replace the baseline profile with parameters fitted on a labeled dataset and report Recall@5, MRR, citation correctness, grounded-answer accuracy, refusal accuracy, latency, and cost for each provider.
+
 ExceptionPilot does not currently include a labeled AI/RAG evaluation dataset or a reproducible benchmark run.
 
 Therefore the following metrics are **unmeasured**:
