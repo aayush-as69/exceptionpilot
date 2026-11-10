@@ -1,3 +1,12 @@
+export type ApprovalRule = { max: number | null; role: string };
+
+const DEFAULT_APPROVAL_RULES: ApprovalRule[] = [
+  { max: 1000000, role: 'AP_CLERK' },
+  { max: 5000000, role: 'AP_MANAGER' },
+  { max: 20000000, role: 'FINANCE_MANAGER' },
+  { max: null, role: 'FINANCE_DIRECTOR' },
+];
+
 export function demoModeEnabled(appEnv?: string, demoMode?: string) {
   return appEnv === 'development' && demoMode === 'true';
 }
@@ -51,4 +60,13 @@ const APPROVAL_AUTHORITIES: Record<string, string[]> = {
 
 export function canApproveRole(actorRole: string, requiredRole: string) {
   return APPROVAL_AUTHORITIES[requiredRole]?.includes(actorRole) === true;
+}
+
+export function resolveApprovalRole(
+  exception: { amount: number; riskScore: number; type: string },
+  rules: ApprovalRule[] = DEFAULT_APPROVAL_RULES,
+) {
+  if (exception.type === 'SUSPICIOUS_TRANSACTION') return 'COMPLIANCE';
+  if (exception.riskScore >= 76) return 'FINANCE_DIRECTOR';
+  return rules.find(rule => rule.max === null || exception.amount <= rule.max)?.role ?? 'FINANCE_DIRECTOR';
 }
