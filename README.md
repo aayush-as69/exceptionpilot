@@ -1,18 +1,14 @@
-# ExceptionPilot 2.0 — Option B
+# ExceptionPilot
 
-**A self-contained, downloadable enterprise exception-management demo.**
+**An invoice exception-management demo built on Next.js and PostgreSQL.**
 
-This workspace was empty when the ZIP request arrived; there was no pre-existing Option B implementation to archive. This archive therefore contains the working demo built in this workspace, not a claim that the entire original enterprise specification has been implemented. The final request was to package Option B without additional tests. No automated test suite was added or run.
+A demo of invoice exception handling with explainable risk scoring, policy retrieval and human approval workflows. It is a working demo, not a full implementation of an enterprise specification, and it has no automated test suite yet (see [Testing and evaluation](#testing-and-evaluation)).
 
 ## Overview
 
 ExceptionPilot connects invoice exceptions to structured financial records, explainable risk factors, versioned policy evidence, and explicit human approval. It is an investigator and workflow application—not a chatbot and not an autonomous payment system.
 
 The default screen is a polished, responsive overview with live PostgreSQL metrics, a priority queue, risk distribution, activity, and vendor watchlist. The central seeded case is **INV-1042**: PO **₹1,10,000**, invoice **₹1,24,000**, difference **₹14,000 / 12.73%**, policy tolerance **5%**.
-
-## Download
-
-Use **Settings → Download Option B ZIP**, or open `/exceptionpilot-option-b.zip` on the running app. The archive includes source, SQL migrations, seed and provisioning scripts, documentation, Docker configuration, lockfile, and `.env.example`. It excludes `.env`, credentials beyond explicitly documented development-only demo passwords, dependencies, build output, and local logs.
 
 ## Features implemented
 
@@ -94,8 +90,8 @@ Open `/workspace/api-docs` for the endpoint browser or `/api/openapi` for OpenAP
 
 Requirements: Node.js 22+, npm, PostgreSQL 17+ (or a compatible supported PostgreSQL instance).
 
-1. Extract the ZIP and enter the `exceptionpilot-option-b` directory.
-2. Run `npm ci`.
+1. Clone the repo: `git clone https://github.com/aayush-as69/exceptionpilot && cd exceptionpilot`.
+2. Run `npm install`.
 3. Copy `.env.example` to `.env` and set `DATABASE_URL` for your local database.
 4. On a fresh database, run `npx tsx scripts/migrate.ts`.
 5. Run `npx tsx scripts/seed.ts`.
@@ -135,7 +131,7 @@ These are public demo credentials, not production secrets. Disable demo mode and
 
 ## Testing and evaluation
 
-Per the final request, **no additional tests were written or run**. Type generation, TypeScript, production build, managed startup/health, and archive checks are recorded in `VALIDATION.md`. These are build/deployment checks, not a substitute for the full requested test suite.
+No automated tests have been written yet. CI runs type generation, lint and typecheck on every push and pull request; earlier build and startup checks are recorded in `VALIDATION.md`. These are build checks, not a substitute for a full test suite.
 
 No RAG evaluation percentages are displayed or claimed. A formal labeled evaluation dataset and Recall@5/precision/grounding suite remain future work. See [testing](docs/testing.md) and [evaluation](docs/evaluation.md).
 
