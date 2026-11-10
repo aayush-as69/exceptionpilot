@@ -199,14 +199,15 @@ function openApi() {
   for (const [name, permission] of Object.entries(collections)) {
     paths['/api/' + name] = list(name, permission);
     if (name !== 'analytics') {
-      paths['/api/' + name + '/{id}'] = {
-        get: {
-          summary: 'Read one recent ' + name + ' record',
-          description: 'Requires an authenticated session and ' + permission + '. The record is selected from the bounded workspace snapshot.',
-          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-          responses: { '200': { description: 'Record' }, '401': { description: 'Authentication required' }, '403': { description: 'Permission denied' }, '404': { description: 'Record not found in the current snapshot' } },
-        },
+      const detailPath = '/api/' + name + '/{id}';
+      const detailOperations = (paths[detailPath] as Record<string, unknown> | undefined) ?? {};
+      detailOperations.get = {
+        summary: 'Read one recent ' + name + ' record',
+        description: 'Requires an authenticated session and ' + permission + '. The record is selected from the bounded workspace snapshot.',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Record' }, '401': { description: 'Authentication required' }, '403': { description: 'Permission denied' }, '404': { description: 'Record not found in the current snapshot' } },
       };
+      paths[detailPath] = detailOperations;
     }
   }
   const tasksPath = list('tasks', 'task.manage');
